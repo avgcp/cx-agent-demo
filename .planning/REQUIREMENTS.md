@@ -113,13 +113,48 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | — | Pending |
+| NARR-01 | Phase 1 — Foundations | Pending |
+| NARR-02 | Phase 1 — Foundations | Pending |
+| NARR-03 | Phase 1 — Foundations | Pending |
+| NARR-04 | Phase 1 — Foundations | Pending |
+| CAP-01 | Phase 1 — Foundations | Pending |
+| CAP-02 | Phase 1 — Foundations | Pending |
+| DEC-01 | Phase 1 — Foundations | Pending |
+| DEC-02 | Phase 1 — Foundations | Pending |
+| DEC-03 | Phase 1 — Foundations | Pending |
+| DATA-01 | Phase 1 — Foundations | Pending |
+| DATA-02 | Phase 1 — Foundations | Pending |
+| DATA-03 | Phase 1 — Foundations | Pending |
+| DATA-04 | Phase 1 — Foundations | Pending |
+| ARCH-01 | Phase 2 — Component Architecture | Pending |
+| ARCH-02 | Phase 2 — Component Architecture | Pending |
+| ARCH-03 | Phase 2 — Component Architecture | Pending |
+| TOOL-01 | Phase 2 — Component Architecture | Pending |
+| TOOL-02 | Phase 2 — Component Architecture | Pending |
+| UC-01 | Phase 3 — Use-Case Specs | Pending |
+| UC-02 | Phase 3 — Use-Case Specs | Pending |
+| UC-03 | Phase 3 — Use-Case Specs | Pending |
+| UC-04 | Phase 3 — Use-Case Specs | Pending |
+| UC-05 | Phase 3 — Use-Case Specs | Pending |
+| UC-06 | Phase 3 — Use-Case Specs | Pending |
+| UC-07 | Phase 3 — Use-Case Specs | Pending |
+| UC-08 | Phase 3 — Use-Case Specs | Pending |
+| UC-09 | Phase 3 — Use-Case Specs | Pending |
+| ADD-01 | Phase 3 — Use-Case Specs | Pending |
+| ADD-02 | Phase 3 — Use-Case Specs | Pending |
+| ADD-03 | Phase 3 — Use-Case Specs | Pending |
+| ADD-04 | Phase 3 — Use-Case Specs | Pending |
+| RUN-01 | Phase 4 — Runbook & Synthesis | Pending |
+| RUN-02 | Phase 4 — Runbook & Synthesis | Pending |
+| AC-01 | Phase 4 — Runbook & Synthesis | Pending |
+| AC-02 | Phase 4 — Runbook & Synthesis | Pending |
+| AC-03 | Phase 4 — Runbook & Synthesis | Pending |
 
 **Coverage:**
-- v1 requirements: 33 total
-- Mapped to phases: TBD (roadmapper)
-- Unmapped: TBD
+- v1 requirements: 36 total (corrected from initial header count of 33 — direct ID count across all 10 categories is 36)
+- Mapped to phases: 36/36
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-08*
-*Last updated: 2026-07-08 after initial definition*
+*Last updated: 2026-07-08 after roadmap creation — traceability populated, 100% coverage across 4 phases*
