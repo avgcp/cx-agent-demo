@@ -48,3 +48,20 @@ The carrier (Meridian Device Protection) and the specific product (personal devi
 What is **structural and reusable** across every account/sector: the decision-branch pattern (deterministic threshold + always-escalate flag), the escalation/HITL handoff pattern, the cross-sell trigger pattern (resolved claim + a detected coverage gap), and the backend-reveal pattern (transcript → summary → drafted artifact). What is **illustrative and swappable** per account: the specific loss type (laptop screen/liquid damage), the specific cross-sell product (device bundle), and the carrier name/branding.
 
 Per the "one line of business per run" discipline (D-01), this demo run stays **single-sector** — device/gadget insurance only, no multi-sector branching live on stage. Multi-sector reach is demonstrated by documenting the swap points above, not by showing multiple verticals in one sitting (a 10–15 minute demo showing auto AND home AND pet in one run would dilute every wow moment rather than landing any of them).
+
+### Competitive Framing — vs. Microsoft Copilot + Nuance
+
+This is a short, flagged callout — **not** a full head-to-head comparison table (per D-14) — positioning two demonstrable Google advantages that map directly to wow moments already in this script, offered as GTM/positioning input for Scott/Srini/Stephanie/Hallie to confirm before use in customer-facing sales language, not asserted as settled fact here:
+
+- **Native audio-to-audio voice with live mid-call language switching** (Beat 5) vs. Microsoft Copilot Studio's real-time voice agents, which GA'd April 2026 with a North-America-only region lock at time of writing. Switching languages live, mid-call, without the caller re-announcing themselves, is a capability gap worth demonstrating directly rather than describing. `[VALIDATE — Scott/Google]`
+- The **backend claims-processing reveal** (Beat 9) — an auto-drafted, ready-to-send customer email and a structured assessor briefing packet generated from the live conversation — positioned as a claims-operations transformation, versus Copilot's documented transcript/call-summary generation, which is positioned primarily as an agent-productivity note-taking aid rather than a downstream-artifact generator. `[VALIDATE — Scott/Google]`
+
+Both claims are GTM/positioning input only; they must be confirmed by Scott/Srini/Stephanie/Hallie against current Microsoft product capability before appearing in any customer-facing sales deck or being spoken as settled fact in a live pitch.
+
+### Flagged Validation Items
+
+Demo-content choices flagged here for stakeholder/console confirmation, so nothing in this narrative is a silent assumption. These roll up into the Phase 4 Open Questions/Risks section (AC-03):
+
+1. **Device-bundle cross-sell chosen over Scott's original boat/marine example** (Beat 10) — `[VALIDATE — Scott/Google]`. The device-bundle offer was chosen because it fits a device-insurance customer and makes the seeded personalization land more naturally, but the boat example was Scott's specific named illustration. The boat/marine cross-sell is retained as a restorable option if Scott prefers it (per D-09) — not lost, just deferred.
+2. **Audio-to-audio support for the English↔Spanish (US) pair** (Beat 5) — an **in-console confirmation item**, not yet found in current CX Agent Studio technical docs (only in press coverage of the Jan 2026 announcement). The **captioned-text fallback** is the confirmed-safe path if live audio-to-audio parity for this pair is not confirmed before build (per D-11).
+3. **Transcript → specialist summary → drafted-email/briefing backend reveal** (Beat 9) is spec'd here as a **custom in-session sub-agent + Python tool chain**, not an off-the-shelf Gemini Enterprise pipeline — cross-reference Section 2's Open Questions subsection, which flags this as the platform's biggest open capability question.
