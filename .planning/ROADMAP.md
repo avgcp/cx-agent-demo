@@ -29,10 +29,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The platform capability map contains one row per wow moment, each tagged `[BUILT-IN]` / `[CUSTOM TOOL]` / `[MOCK DATA]` and cited against current Google Cloud documentation, with any unverified/press-only claim (notably audio-to-audio language set, transcript→summary→email mechanics) explicitly flagged as an open question rather than stated as fact.
   4. The decision logic table expresses the ~$1,000 auto-approve/human-assessor threshold, the injury/high-risk escalation flag, and the cross-sell trigger as literal if/then rows with no prose ambiguity; it mandates routing via a deterministic Python tool + Handoff Rule on a session variable (never RAG or instruction-only LLM judgment); and it frames auto-approval as a human-authorized, configurable, auditable rule set with a visible audit-trail artifact and a stated illustrative rationale for the $1,000 figure — never "the AI decides."
   5. The Mock Data Appendix contains versioned, literal seed records (policies, claimants, coverage, claim amounts, damage images, multilingual test phrases) engineered to land on both sides of every threshold, including "negative" records that must NOT trigger a branch, uses synthetic (non-real) PII only, and every dollar figure/coverage term used anywhere in the narrative traces to a named mock-data field.
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Mock Data Appendix (canonical seed dataset; source of truth for all figures/records/images/phrases)
+- [ ] 01-02-PLAN.md — Platform Capability Map (one tagged, cited row per wow moment; unverified claims flagged)
+- [ ] 01-03-PLAN.md — Decision Logic table (literal if/then rules; deterministic tool + Handoff Rule; audit-trail framing)
+- [ ] 01-04-PLAN.md — Demo Narrative (≤10–15 min beat-by-beat storyline; V1→V2 delta; flagged competitive framing)
 
 ### Phase 2: Component Architecture
 **Goal**: The concrete component inventory — agent architecture and tool/data inventory — is specified precisely enough that the per-use-case specs can reference it by name without re-deriving anything.
