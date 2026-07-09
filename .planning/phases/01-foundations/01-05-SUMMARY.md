@@ -108,6 +108,17 @@ None - no external service configuration required.
 
 All 9 Phase-1 verification truths (previously 6/9) should now be satisfiable on re-verification — the three decision-ID traceability gaps identified in `01-VERIFICATION.md` are closed with citation-only edits. No blockers for Phase 2 (Component Architecture) or Phase 3 (Use-Case Specs), which reference these four Phase-1 sections by name.
 
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/01-foundations/01-05-SUMMARY.md
+- FOUND: .planning/spec/section-3-decision-logic.md
+- FOUND: .planning/spec/section-4-mock-data-appendix.md
+- FOUND: .planning/spec/section-1-demo-narrative.md
+- FOUND commit: 6edb496
+- FOUND commit: 8e48cd9
+- FOUND commit: dc514fb
+- FOUND commit: f9987c6
+
 ---
 *Phase: 01-foundations*
 *Completed: 2026-07-09*
