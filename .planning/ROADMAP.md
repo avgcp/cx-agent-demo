@@ -37,7 +37,7 @@ Plans:
 - [x] 01-02-PLAN.md — Platform Capability Map (one tagged, cited row per wow moment; unverified claims flagged)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 01-03-PLAN.md — Decision Logic table (literal if/then rules; deterministic tool + Handoff Rule; audit-trail framing)
+- [x] 01-03-PLAN.md — Decision Logic table (literal if/then rules; deterministic tool + Handoff Rule; audit-trail framing)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-04-PLAN.md — Demo Narrative (≤10–15 min beat-by-beat storyline; V1→V2 delta; flagged competitive framing)
