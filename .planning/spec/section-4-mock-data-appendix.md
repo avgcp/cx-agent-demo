@@ -79,3 +79,74 @@ Two claims under the same policy/claimant, engineered to land on opposite sides 
 $450 (CLM-24001) sits below the $1,000 ceiling; $2,400 (CLM-24002) sits above it — the two anchor claims straddle both sides of the threshold as required.
 
 **These field names — `claimant_name`, `policy_id`, `email`, `phone`, `uninsured_device`, `coverage_type`, `deductible`, `coverage_limit`, `coverage_valid`, `claim_id`, `loss_type`, `claim_amount`, `total_loss_flag`, `data_loss_flag`, `damage_image_ref` — are the canonical tokens that Sections 1 (Demo Narrative) and 3 (Decision Logic) must reference by name. No section may restate or invent a different value for any of these fields.**
+
+### Negative / Over-Fire Records
+
+Records that must **NOT** trigger a branch — seeded specifically to catch over-firing during rehearsal and live delivery (per Pitfall 4 / the "Looks Done But Isn't" checklist).
+
+**Escalation over-fire check — near-threshold claim that must still auto-approve**
+
+| Field | Value |
+|---|---|
+| `claim_id` | CLM-24003 |
+| `loss_type` | Near-threshold cracked-screen claim |
+| `claim_amount` | $950 |
+| `total_loss_flag` | false |
+| `data_loss_flag` | false |
+| `coverage_valid` | true |
+| `expected_routing` | **AUTO-APPROVE.** Must NOT escalate, despite being close to the $1,000 ceiling. This record exists solely to catch a decision-logic bug that escalates on proximity to the threshold rather than the literal `amount > $1,000` rule. |
+
+**Cross-sell over-fire check — fully insured claimant, no cross-sell hook**
+
+| Field | Value |
+|---|---|
+| `claimant_name` | Sam Okafor |
+| `policy_id` | PDP-100871 |
+| `coverage_valid` | true (fully insured — no coverage gaps) |
+| `uninsured_device` | none |
+| `expected_behavior` | Cross-sell/upsell offer must **NOT** fire for this claimant. This record exists solely to catch a decision-logic bug that offers a device bundle regardless of whether an actual coverage gap exists. |
+
+### Pre-Validated Damage-Image Library
+
+A small library of named seed images per damage scenario, each with a pre-validated expected damage-analysis output. Per Pitfall 5, **ad-hoc or live-captured photos are forbidden in the standard demo path** — only these named seed images may be used. The implementation team must attach the actual image files to these references and re-validate the expected output against the live model before the demo is delivered; these are placeholder references, not attached files, as of this spec.
+
+| Image ref | Scenario | Expected damage-analysis output |
+|---|---|---|
+| IMG-CRACK-01 | Cracked/cosmetic laptop screen | Moderate cosmetic screen damage, repairable, LOW severity, within auto-approve range |
+| IMG-CRACK-02 | Cracked/cosmetic laptop screen (variant) | Moderate cosmetic screen damage, repairable, LOW severity, within auto-approve range |
+| IMG-CRACK-03 | Cracked/cosmetic laptop screen (variant) | Moderate cosmetic screen damage, repairable, LOW severity, within auto-approve range |
+| IMG-LIQUID-01 | Liquid-damaged/destroyed high-end laptop | Severe internal liquid damage, likely total loss, HIGH severity, route to human |
+| IMG-LIQUID-02 | Liquid-damaged/destroyed high-end laptop (variant) | Severe internal liquid damage, likely total loss, HIGH severity, route to human |
+
+`CLM-24001` uses `IMG-CRACK-01`; `CLM-24002` uses `IMG-LIQUID-01`. The remaining images (`IMG-CRACK-02`, `IMG-CRACK-03`, `IMG-LIQUID-02`) are held in reserve as swap-in recovery images per the Demo Runbook / Fallback Plan (Pitfall 5 recovery strategy) if a live photo-analysis result looks off during rehearsal or delivery.
+
+### Multilingual Test Phrases
+
+English ↔ Spanish (US) trigger phrases, given verbatim (per D-10; exact phrasing required per Pitfall 10 to avoid ASR-ambiguous language-switch triggers).
+
+| Phrase role | Verbatim text |
+|---|---|
+| English FNOL open | "Hi, I dropped my laptop and the screen is cracked." |
+| Language-switch trigger (customer) | "¿Podemos continuar en español?" |
+| Spanish FNOL phrase | "Se me cayó la laptop y la pantalla está rota." |
+
+**Note:** English (US) and Spanish (US) are both **GA voice variants**. Any language outside the confirmed audio-to-audio core set uses the **captioned-text fallback** (per D-11) — do not assume live audio-to-audio parity for any language pair not explicitly confirmed in-console.
+
+### Traceability Field Registry
+
+Every on-stage dollar figure and coverage term maps to exactly one canonical named field and owning record below. **Rule: nothing is free-generated on stage.** If a figure is not in this registry, it must not be spoken by the agent or the presenter.
+
+| Value | Field | Owning record |
+|---|---|---|
+| $100 | `deductible` | Policy (PDP-100294) |
+| $3,500 | `coverage_limit` | Policy (PDP-100294) |
+| $450 | `claim_amount` | CLM-24001 (small/auto-approve claim) |
+| $2,400 | `claim_amount` | CLM-24002 (large/HITL claim) |
+| $950 | `claim_amount` | CLM-24003 (escalation over-fire negative record) |
+| true | `total_loss_flag` | CLM-24002 |
+| false | `total_loss_flag` | CLM-24001, CLM-24003 |
+| true | `data_loss_flag` | CLM-24002 |
+| false | `data_loss_flag` | CLM-24001, CLM-24003 |
+| $1,000 | Decision threshold (auto-approve ceiling) | Decision Logic (Section 3) — not a claim field, the literal configurable rule value |
+| recently purchased smartphone (uninsured) | `uninsured_device` | Jordan Rivera / PDP-100294 (cross-sell hook) |
+| none | `uninsured_device` | Sam Okafor / PDP-100871 (cross-sell over-fire negative record) |
