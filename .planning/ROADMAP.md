@@ -43,7 +43,7 @@ Plans:
 - [x] 01-04-PLAN.md — Demo Narrative (≤10–15 min beat-by-beat storyline; V1→V2 delta; flagged competitive framing)
 
 **Wave 4 — Gap closure** *(closes 01-VERIFICATION.md decision-ID traceability gaps)*
-- [ ] 01-05-PLAN.md — Decision-ID citation insertions (D-05/D-12/D-13 in §3, D-08 in §4, D-03/D-07 + fraud-out-of-scope sentence in §1)
+- [x] 01-05-PLAN.md — Decision-ID citation insertions (D-05/D-12/D-13 in §3, D-08 in §4, D-03/D-07 + fraud-out-of-scope sentence in §1)
 
 ### Phase 2: Component Architecture
 **Goal**: The concrete component inventory — agent architecture and tool/data inventory — is specified precisely enough that the per-use-case specs can reference it by name without re-deriving anything.

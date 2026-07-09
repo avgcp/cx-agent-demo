@@ -10,7 +10,7 @@
 ### Narrative & GTM Framing (NARR)
 
 - [ ] **NARR-01**: Spec contains a single coherent demo narrative/storyline (prose + beats) stitching every wow moment into one white-label FNOL scenario, ≤10–15 min
-- [ ] **NARR-02**: Narrative is white-label/generic (no customer-specific branding) and states which insurance sectors it generalizes to
+- [x] **NARR-02**: Narrative is white-label/generic (no customer-specific branding) and states which insurance sectors it generalizes to
 - [ ] **NARR-03**: Spec includes GTM/competitive framing vs. Microsoft Copilot + Nuance, with all competitive claims flagged for stakeholder (Scott/Google) validation, not asserted as fact
 - [ ] **NARR-04**: Spec references the V1 baseline (chat FNOL happy path) and states explicitly what V2 adds on top
 
@@ -21,16 +21,16 @@
 
 ### Decision Logic (DEC)
 
-- [ ] **DEC-01**: Spec contains an explicit if/then business-rules table (no prose ambiguity) covering the ~$1,000 auto-approve vs. human-assessor threshold, the injury/high-risk escalation flag, and the cross-sell trigger
-- [ ] **DEC-02**: Spec mandates the threshold be computed by a deterministic Python tool routed via a Handoff Rule on a session variable — explicitly NOT RAG or instruction-only LLM judgment
-- [ ] **DEC-03**: Spec frames auto-approval as a human-authorized, configurable, auditable rule set (with a visible audit-trail artifact) — never "the AI decides" — and gives the $1,000 threshold a stated, illustrative/configurable rationale
+- [x] **DEC-01**: Spec contains an explicit if/then business-rules table (no prose ambiguity) covering the ~$1,000 auto-approve vs. human-assessor threshold, the injury/high-risk escalation flag, and the cross-sell trigger
+- [x] **DEC-02**: Spec mandates the threshold be computed by a deterministic Python tool routed via a Handoff Rule on a session variable — explicitly NOT RAG or instruction-only LLM judgment
+- [x] **DEC-03**: Spec frames auto-approval as a human-authorized, configurable, auditable rule set (with a visible audit-trail artifact) — never "the AI decides" — and gives the $1,000 threshold a stated, illustrative/configurable rationale
 
 ### Mock Data (DATA)
 
-- [ ] **DATA-01**: Spec includes a Mock Data Appendix with literal, versioned seed records (policies, claimants, coverage, claim amounts) as the canonical demo dataset
+- [x] **DATA-01**: Spec includes a Mock Data Appendix with literal, versioned seed records (policies, claimants, coverage, claim amounts) as the canonical demo dataset
 - [ ] **DATA-02**: Seed claim amounts are engineered to land on both sides of every threshold, and include "negative" records that must NOT trigger a branch (over-fire check)
 - [ ] **DATA-03**: Mock data uses synthetic (non-real) PII only, and includes multilingual test phrases and seed damage images
-- [ ] **DATA-04**: Every dollar figure / coverage term spoken in the demo traces to a named mock-data field (nothing free-generated on stage)
+- [x] **DATA-04**: Every dollar figure / coverage term spoken in the demo traces to a named mock-data field (nothing free-generated on stage)
 
 ### Agent Architecture (ARCH)
 
@@ -114,18 +114,18 @@ Which phases cover which requirements. Populated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | NARR-01 | Phase 1 — Foundations | Pending |
-| NARR-02 | Phase 1 — Foundations | Pending |
+| NARR-02 | Phase 1 — Foundations | Complete |
 | NARR-03 | Phase 1 — Foundations | Pending |
 | NARR-04 | Phase 1 — Foundations | Pending |
 | CAP-01 | Phase 1 — Foundations | Pending |
 | CAP-02 | Phase 1 — Foundations | Pending |
-| DEC-01 | Phase 1 — Foundations | Pending |
-| DEC-02 | Phase 1 — Foundations | Pending |
-| DEC-03 | Phase 1 — Foundations | Pending |
-| DATA-01 | Phase 1 — Foundations | Pending |
+| DEC-01 | Phase 1 — Foundations | Complete |
+| DEC-02 | Phase 1 — Foundations | Complete |
+| DEC-03 | Phase 1 — Foundations | Complete |
+| DATA-01 | Phase 1 — Foundations | Complete |
 | DATA-02 | Phase 1 — Foundations | Pending |
 | DATA-03 | Phase 1 — Foundations | Pending |
-| DATA-04 | Phase 1 — Foundations | Pending |
+| DATA-04 | Phase 1 — Foundations | Complete |
 | ARCH-01 | Phase 2 — Component Architecture | Pending |
 | ARCH-02 | Phase 2 — Component Architecture | Pending |
 | ARCH-03 | Phase 2 — Component Architecture | Pending |
