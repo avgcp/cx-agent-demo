@@ -33,7 +33,7 @@ Drives the demo run, the cross-sell moment, and the personalization "wow" (seede
 | `email` | jordan.rivera@example-mail.test |
 | `phone` | 555-0142 |
 | `tenure` | Policyholder since 2023 |
-| `uninsured_device` | Recently purchased smartphone (purchased 2026-06, NOT currently on any policy) — seeded cross-sell/personalization hook |
+| `uninsured_device` | Recently purchased smartphone (purchased 2026-06, NOT currently on any policy) — seeded cross-sell/personalization hook (per D-08) |
 
 ### Policy & Coverage
 
