@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The platform capability map contains one row per wow moment, each tagged `[BUILT-IN]` / `[CUSTOM TOOL]` / `[MOCK DATA]` and cited against current Google Cloud documentation, with any unverified/press-only claim (notably audio-to-audio language set, transcript→summary→email mechanics) explicitly flagged as an open question rather than stated as fact.
   4. The decision logic table expresses the ~$1,000 auto-approve/human-assessor threshold, the injury/high-risk escalation flag, and the cross-sell trigger as literal if/then rows with no prose ambiguity; it mandates routing via a deterministic Python tool + Handoff Rule on a session variable (never RAG or instruction-only LLM judgment); and it frames auto-approval as a human-authorized, configurable, auditable rule set with a visible audit-trail artifact and a stated illustrative rationale for the $1,000 figure — never "the AI decides."
   5. The Mock Data Appendix contains versioned, literal seed records (policies, claimants, coverage, claim amounts, damage images, multilingual test phrases) engineered to land on both sides of every threshold, including "negative" records that must NOT trigger a branch, uses synthetic (non-real) PII only, and every dollar figure/coverage term used anywhere in the narrative traces to a named mock-data field.
-**Plans**: 4 plans
+**Plans**: 5 plans (incl. 1 gap-closure)
 
 Plans:
 **Wave 1**
@@ -41,6 +41,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 01-04-PLAN.md — Demo Narrative (≤10–15 min beat-by-beat storyline; V1→V2 delta; flagged competitive framing)
+
+**Wave 4 — Gap closure** *(closes 01-VERIFICATION.md decision-ID traceability gaps)*
+- [ ] 01-05-PLAN.md — Decision-ID citation insertions (D-05/D-12/D-13 in §3, D-08 in §4, D-03/D-07 + fraud-out-of-scope sentence in §1)
 
 ### Phase 2: Component Architecture
 **Goal**: The concrete component inventory — agent architecture and tool/data inventory — is specified precisely enough that the per-use-case specs can reference it by name without re-deriving anything.
