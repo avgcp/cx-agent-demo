@@ -40,7 +40,7 @@ Plans:
 - [x] 01-03-PLAN.md — Decision Logic table (literal if/then rules; deterministic tool + Handoff Rule; audit-trail framing)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 01-04-PLAN.md — Demo Narrative (≤10–15 min beat-by-beat storyline; V1→V2 delta; flagged competitive framing)
+- [x] 01-04-PLAN.md — Demo Narrative (≤10–15 min beat-by-beat storyline; V1→V2 delta; flagged competitive framing)
 
 ### Phase 2: Component Architecture
 **Goal**: The concrete component inventory — agent architecture and tool/data inventory — is specified precisely enough that the per-use-case specs can reference it by name without re-deriving anything.
