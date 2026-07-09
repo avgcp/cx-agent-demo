@@ -12,7 +12,7 @@ This is a specification-authoring project, not a software build. Each phase belo
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundations** - Lock the demo narrative, platform capability map, decision logic, and mock data appendix that every later section depends on
+- [x] **Phase 1: Foundations** - Lock the demo narrative, platform capability map, decision logic, and mock data appendix that every later section depends on _(completed 2026-07-09)_
 - [ ] **Phase 2: Component Architecture** - Specify the agent architecture and tool/data inventory that per-use-case specs will reference
 - [ ] **Phase 3: Use-Case Specs** - Write the 9 fixed-template use-case specs plus 4 differentiator add-ons (parallelizable)
 - [ ] **Phase 4: Runbook & Synthesis** - Produce the presenter runbook, roll up global acceptance criteria, and close out open questions/risks
@@ -97,7 +97,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundations | 0/TBD | Not started | - |
+| 1. Foundations | 5/5 | Complete | 2026-07-09 |
 | 2. Component Architecture | 0/TBD | Not started | - |
 | 3. Use-Case Specs | 0/TBD | Not started | - |
 | 4. Runbook & Synthesis | 0/TBD | Not started | - |
