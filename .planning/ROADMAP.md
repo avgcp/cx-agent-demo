@@ -55,10 +55,14 @@ Plans:
   3. Damage assessment is specified as a native-multimodal capability of the Intake sub-agent (not a separate deep-nested agent), with the shallow-nesting guardrail stated explicitly as a design rule other authors must follow.
   4. The Tool & Data Inventory contains exactly one row per tool/data store (name, type, purpose, inputs, outputs, source mock data) as a single source of truth, and every backend lookup (policy, coverage, claim creation, boat-insurance/upsell check, damage valuation) is specified as a deterministic mock Python code tool returning seeded JSON — not a Data Store/RAG lookup.
   5. Exact Handoff Rule UI/syntax and exact Python-tool session-variable mechanics are explicitly flagged in the spec as items the implementation team must confirm against the live console before building, rather than asserted as settled.
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
+**Wave 1**
+- [ ] 02-01-PLAN.md — Agent Architecture Spec (§5): root Claims Concierge + 5 sub-agents, shallow-nesting design rule, session-variable contract table (ARCH-01/02/03)
+
+**Wave 2** *(blocked on Wave 1 completion — §6 references §5 agents + session variables by name)*
+- [ ] 02-02-PLAN.md — Tool & Data Inventory (§6): one row per tool, all deterministic Python (zero RAG), SC#5 console-confirm flags (TOOL-01/02)
 
 ### Phase 3: Use-Case Specs
 **Goal**: Every wow moment has a complete, buildable, testable use-case spec that pulls from — never re-derives — the Foundations and Component Architecture sections.
@@ -98,6 +102,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundations | 5/5 | Complete | 2026-07-09 |
-| 2. Component Architecture | 0/TBD | Not started | - |
+| 2. Component Architecture | 0/2 | Planned | - |
 | 3. Use-Case Specs | 0/TBD | Not started | - |
 | 4. Runbook & Synthesis | 0/TBD | Not started | - |
