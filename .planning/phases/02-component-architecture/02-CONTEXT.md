@@ -64,14 +64,14 @@ Decision IDs continue Phase 1's sequence (D-01..D-14) to stay globally unique ac
 - `.planning/PROJECT.md` — core value, constraints (mock-data-only, white-label, flow-free, ASAP), "show, don't tell."
 
 ### Phase 1 outputs (the four sections §5/§6 must reference by name — NEVER re-derive)
-- `.planning/spec/section-1-demo-narrative.md` — the end-to-end storyline; source of the autonomous-path email "recommended repair partner" beat (D-16) and the two-claims decision-branch structure.
+- `.planning/spec/section-1-demo-narrative.md` — the end-to-end storyline; Beat 9's autonomous-path email (approval + claim number + next steps — no repair partner, per reversed D-16) and the two-claims decision-branch structure that §5's Backend/Decisioning agents realize.
 - `.planning/spec/section-2-platform-capability-map.md` — the per-wow-moment → CX Agent Studio primitive mapping that §5/§6 make concrete.
 - `.planning/spec/section-3-decision-logic.md` — the literal if/then rows and Handoff-Rule routing that the D-17 session-variable contract must trace to.
 - `.planning/spec/section-4-mock-data-appendix.md` — the seeded records every Python tool in §6 returns (single source of truth for figures/records/images).
 - `.planning/phases/01-foundations/01-CONTEXT.md` — Phase 1 locked decisions **D-01..D-14** (esp. D-05 total-loss/data-loss always-escalate flag, D-08 device-bundle cross-sell, D-12/D-13 $1,000 threshold + deterministic tool + Handoff Rule).
 
 ### Project Research (grounds the component composition)
-- `.planning/research/ARCHITECTURE.md` — recommended root + shallow-sub-agent composition, the dual-output-mode Backend pattern (§Pattern 2), the deterministic-fork pattern (§Pattern 1), the opportunistic-upsell pattern (§Pattern 3), and the deep-nesting anti-pattern. **NOTE: its `repair_partner_search` Data Store is superseded by D-16 (mock Python tool, zero RAG).**
+- `.planning/research/ARCHITECTURE.md` — recommended root + shallow-sub-agent composition, the dual-output-mode Backend pattern (§Pattern 2), the deterministic-fork pattern (§Pattern 1), the opportunistic-upsell pattern (§Pattern 3), and the deep-nesting anti-pattern. **NOTE: its `repair_partner_search` Data Store is NOT used — repair-partner is out of scope (reversed D-16); the demo is zero-RAG (every tool is a deterministic Python tool).**
 - `.planning/research/STACK.md` — CX Agent Studio primitive taxonomy; agent-as-tool (D-15); Python code tools; `end_session` system tool; Handoff Rules; session variables.
 - `.planning/research/PITFALLS.md` — non-determinism and RAG-for-structured-data pitfalls that D-16 and the deterministic-tool discipline pre-empt.
 - `CLAUDE.md` (project root) — full platform capability reference tables with source citations and confidence tags (mirror source of STACK.md; includes doc URLs and the "flow-free / do-not-spec-around-flows" constraint).
