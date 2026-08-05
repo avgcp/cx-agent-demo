@@ -21,7 +21,7 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | **v10** `6ec881a1-081f-4859-8edb-4329d801c3d8` |
+| Version live | **v11** `b17c9a26-3485-4658-9259-dfa4839a7977` |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 
@@ -32,7 +32,7 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `6ec881a1…`. Anything else and the email may go elsewhere — see the version table
+> Expect `b17c9a26…`. Anything else and the email may go elsewhere — see the version table
 > at the bottom.
 >
 > **Only one mailbox can receive.** The sender is Resend's shared `onboarding@resend.dev`,
@@ -159,7 +159,8 @@ curl -X PATCH \
 
 | Version | ID | Notes |
 |---|---|---|
-| **v10** | `6ec881a1-081f-4859-8edb-4329d801c3d8` | **Current.** Liquid-ingress disambiguation |
+| **v11** | `b17c9a26-3485-4658-9259-dfa4839a7977` | **Current.** No self-narration |
+| v10 | `6ec881a1-081f-4859-8edb-4329d801c3d8` | Liquid-ingress disambiguation |
 | v9 | `ff095eeb-95a9-42f1-987d-8f2ed61d9304` | Device framing + mismatch cross-sell |
 | v7 | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | Previous good build, assumes the covered device |
 | — | `5d24c721-4ecc-4166-a595-9d2e151a2e16` | ⚠️ Mails a different address — do not use |
@@ -171,7 +172,7 @@ curl -X PATCH \
 | v2 | `c3ede5f3-dd3e-475c-b658-3fd660e2c384` | |
 | v1 | `a49ca4f7-6e6a-4bfd-90df-f9e90596056c` | Earliest |
 
-**Stay on v10.** If it misbehaves, drop to **v9**, then **v7** — same conversation quality, emails you,
+**Stay on v11.** If it misbehaves, drop to **v10**, then **v9** — same conversation quality, emails you,
 only difference is the email is composed at a slightly later step.
 
 The two unnumbered versions above were cut during a parallel edit and point the claim email
