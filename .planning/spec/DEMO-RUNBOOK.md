@@ -21,7 +21,7 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | **v7** `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` |
+| Version live | **v9** `ff095eeb-95a9-42f1-987d-8f2ed61d9304` |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 
@@ -32,7 +32,7 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `718b6fb3…`. Anything else and the email may go elsewhere — see the version table
+> Expect `ff095eeb…`. Anything else and the email may go elsewhere — see the version table
 > at the bottom.
 >
 > **Only one mailbox can receive.** The sender is Resend's shared `onboarding@resend.dev`,
@@ -79,6 +79,24 @@ sends on this path too.
 path; the agent will not try to sell to someone whose claim just went to a specialist.
 
 Run A then B back-to-back. The contrast between the two is the point.
+
+---
+
+## Optional beat — "actually it's my phone"
+
+If someone asks what happens when the caller names a device that isn't covered, try it:
+
+> *"I cracked the screen on my iPhone 16 Pro Max"*
+
+It declines the claim and turns it into an offer, without being asked to:
+
+> *"Your iPhone 16 Pro Max isn't covered by this policy, so I can't open a claim for it.
+> We can add it to your cover, though, so you're protected in future. Would you like me to
+> arrange that?"* → then steers back to the MacBook.
+
+Name a device on **no** record (*"my Dell monitor got smashed"*) and it declines cleanly
+without inventing cover or offering to add it. Good answer to "does it just say yes to
+everything?".
 
 ---
 
@@ -136,7 +154,8 @@ curl -X PATCH \
 
 | Version | ID | Notes |
 |---|---|---|
-| **v7** | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | **Current.** Both paths + live email verified |
+| **v9** | `ff095eeb-95a9-42f1-987d-8f2ed61d9304` | **Current.** Device framing + mismatch cross-sell |
+| v7 | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | Previous good build, assumes the covered device |
 | — | `5d24c721-4ecc-4166-a595-9d2e151a2e16` | ⚠️ Mails a different address — do not use |
 | — | `a435521a-87ad-4e65-912f-ec86cc747a67` | ⚠️ Mails a different address, no working key — do not use |
 | v6 | `ecab48ad-5dc2-438b-987d-e47f561bf79c` | ⚠️ **Avoid** — repeats lines aloud |
@@ -146,7 +165,7 @@ curl -X PATCH \
 | v2 | `c3ede5f3-dd3e-475c-b658-3fd660e2c384` | |
 | v1 | `a49ca4f7-6e6a-4bfd-90df-f9e90596056c` | Earliest |
 
-**Stay on v7.** If it misbehaves, drop to **v5** — same conversation quality, emails you,
+**Stay on v9.** If it misbehaves, drop to **v7**, then **v5** — same conversation quality, emails you,
 only difference is the email is composed at a slightly later step.
 
 The two unnumbered versions above were cut during a parallel edit and point the claim email
