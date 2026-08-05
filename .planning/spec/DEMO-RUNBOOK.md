@@ -21,27 +21,25 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | **v8** `a435521a-87ad-4e65-912f-ec86cc747a67` |
+| Version live | **v7** `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
-| Claim email goes to | `aniket.kumar@nerdery.com` — **see the warning below** |
+| Claim email goes to | `akash.vinayak@nerdery.com` |
 
-> ⚠️ **Check the email actually arrives before you present.**
-> The demo recipient was changed from `akash.vinayak@nerdery.com` to
-> `aniket.kumar@nerdery.com` in v8. The sender is Resend's shared
-> `onboarding@resend.dev`, which on a free account **only delivers to the address that owns
-> the Resend account**. If that account is owned by `akash.vinayak@`, mail to
-> `aniket.kumar@` is rejected and the agent silently falls back to a drafted message — the
-> call still works perfectly, but no email lands.
->
-> Test it in five seconds:
+> **Confirm the version before you present.** A deployment pins a *version*, so the phone
+> number serves whatever it was last pointed at:
 > ```bash
-> curl -s -X POST https://api.resend.com/emails \
->   -H "Authorization: Bearer $RESEND_KEY" -H "Content-Type: application/json" \
->   -d '{"from":"Meridian Device Protection <onboarding@resend.dev>",
->        "to":["aniket.kumar@nerdery.com"],"subject":"pre-demo check","text":"check"}'
+> curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+>   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
+>   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> A `{"id":"..."}` means you're fine. A 403 means verify a sending domain in Resend, or
-> point the demo back at the account owner's address and re-cut.
+> Expect `718b6fb3…`. Anything else and the email may go elsewhere — see the version table
+> at the bottom.
+>
+> **Only one mailbox can receive.** The sender is Resend's shared `onboarding@resend.dev`,
+> which on a free account delivers **only to the address that owns the Resend account**.
+> That account is `akash.vinayak@nerdery.com`, so mail to anyone else is rejected and the
+> agent quietly falls back to a drafted message. To send to a second person, verify a domain
+> at resend.com/domains and change the `from` address to it.
 
 The agent answers as **Alex**, for the carrier **Meridian Device Protection**.
 English only. Chat/photo upload is **not** part of this demo — it's a phone call.
@@ -58,8 +56,8 @@ English only. Chat/photo upload is **not** part of this demo — it's a phone ca
 | *"No thanks"* | Close warmly |
 
 **What lands:** screen replacement **$840**, under the **$1,500** it can approve on the
-spot, excess **$25**, reference **CLM-24xxx**. A real email goes to the demo inbox. Then it
-offers to add the uninsured **iPhone 16 Pro Max**.
+spot, excess **$25**, reference **CLM-24xxx**. A real email arrives at
+`akash.vinayak@nerdery.com`. Then it offers to add the uninsured **iPhone 16 Pro Max**.
 
 The decision, the email and the cross-sell come as **three separate turns**. Let it finish
 each one — don't talk over the pause.
@@ -98,7 +96,7 @@ Run A then B back-to-back. The contrast between the two is the point.
 Use **PDP100294** unless you have a reason not to. The others exist if someone asks to see
 a different device or a smaller policy.
 
-> Every email goes to the single demo inbox regardless of which policy you use. The
+> Every email goes to `akash.vinayak@nerdery.com` regardless of which policy you use. The
 > addresses on the policy records are `example.com` and undeliverable by design. The agent
 > never reads an address aloud.
 
@@ -138,18 +136,21 @@ curl -X PATCH \
 
 | Version | ID | Notes |
 |---|---|---|
-| **v8** | `a435521a-87ad-4e65-912f-ec86cc747a67` | **Current.** v7 + demo recipient changed to `aniket.kumar@` |
-| v7 | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | Identical behaviour, emails `akash.vinayak@` |
+| **v7** | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | **Current.** Both paths + live email verified |
+| — | `5d24c721-4ecc-4166-a595-9d2e151a2e16` | ⚠️ Mails a different address — do not use |
+| — | `a435521a-87ad-4e65-912f-ec86cc747a67` | ⚠️ Mails a different address, no working key — do not use |
 | v6 | `ecab48ad-5dc2-438b-987d-e47f561bf79c` | ⚠️ **Avoid** — repeats lines aloud |
-| v5 | `0dd52030-d0a8-44d7-8750-cc0ef6c31962` | Safe fallback |
+| v5 | `0dd52030-d0a8-44d7-8750-cc0ef6c31962` | Safe fallback, emails you |
 | v4 | `81f80c75-e8de-4b3d-8f05-30455d8c01d5` | First with live email |
 | v3 | `9eba0634-93aa-448c-9b61-91ffb2818930` | No live email |
 | v2 | `c3ede5f3-dd3e-475c-b658-3fd660e2c384` | |
 | v1 | `a49ca4f7-6e6a-4bfd-90df-f9e90596056c` | Earliest |
 
-**If the email doesn't arrive on v8, roll to v7** — same behaviour, delivers to
-`akash.vinayak@nerdery.com`, which is the address the live send was actually proven against.
-**If v8 misbehaves in any other way, go to v5.**
+**Stay on v7.** If it misbehaves, drop to **v5** — same conversation quality, emails you,
+only difference is the email is composed at a slightly later step.
+
+The two unnumbered versions above were cut during a parallel edit and point the claim email
+at a different mailbox. Don't roll onto them by accident.
 
 **The email cannot break the call.** If the network or the mail provider fails, the agent
 falls back to a drafted message and the conversation continues untouched. You lose the

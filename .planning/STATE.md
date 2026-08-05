@@ -76,7 +76,7 @@ None yet.
 - Phase 2: Exact Handoff Rule UI/syntax and Python-tool session-variable mechanics are MEDIUM-confidence (docs shift on a 6-month-old product) — flag for live-console verification early in Phase 2 (see DEC-02, ARCH work).
 - GTM: Competitive framing vs. Microsoft Copilot/Nuance is LOW-MEDIUM confidence — treat as stakeholder input (Scott/Srini/Stephanie/Hallie) to validate, not asserted fact (see NARR-03).
 - Demo build: the implemented PoC diverges from the Phase 1 Mock Data Appendix (§4) — tariff-based pricing, a 50%-of-coverage auto-approve threshold, $25 excess and no photo-upload path. §4's $1,000 threshold, $100 deductible and $3,500 limit are stale against what a caller actually hears. Reconcile §4 (or mark it superseded) before the spec ships to any other implementation team.
-- Demo build: deployed v8 mails the claim email to `aniket.kumar@nerdery.com` via Resend's shared `onboarding@resend.dev` sender, which on a free account only delivers to the Resend account owner. Live delivery was only ever proven to `akash.vinayak@nerdery.com`. Unverified — see the pre-flight check in DEMO-RUNBOOK.md.
+- Demo build: the claim email can only reach ONE mailbox. Resend's shared `onboarding@resend.dev` sender delivers only to the address owning the Resend account (`akash.vinayak@nerdery.com`) — confirmed by a 403 from Resend when tested against another address. Deployment is pinned to v7 `718b6fb3`, which mails that address; both paths verified live. Sending to a second recipient requires verifying a domain at resend.com/domains and changing the `from` address.
 
 ### Quick Tasks Completed
 
