@@ -44,7 +44,7 @@ server-side. The local source had to be refreshed via `exportApp` before the nex
 - **`cover_offer_actions` has never fired.** The tool exists and is wired, but no test run
   has reached the cross-sell step cleanly.
 
-## Defect found during testing — NOT yet fixed
+## Defect found during testing — FIXED (chat v4 `7710088b`)
 
 **The wrong-subject guard does not work.** A photo of a **laptop** was accepted and
 auto-approved against **PDP100583** (Maria Santos, iPhone 16 Pro Max) — payload shows
@@ -59,9 +59,12 @@ This is the same failure mode designed out everywhere else in this build during 
 judgment call left with the model rather than enforced in code. It was inherited when the
 tool was ported from `9ae7a0c3` and its interface was not re-examined.
 
-**Proposed fix**: replace `image_shows_device` (a comparison) with `device_in_photo`
-(an observation — `laptop` | `phone` | `other` | `unclear`) and compare it against
-`device_category` from the policy record inside the tool. The model reports what it sees;
+**Fix applied**: replaced `image_shows_device` (a comparison) with `device_in_photo`
+(an observation — `laptop` | `phone` | `other` | `unclear`) compared against `device_category`
+from the policy record inside the tool. Verified: laptop-on-phone and phone-on-laptop both
+rejected; matching device still approves at $840 / $420; wrong object, unclear, contradiction
+and bad-enum cases all still behave. Five stale assertions in phototest.py were migrated —
+they passed the old yes/no values and would have started silently returning INVALID_VALUE. The model reports what it sees;
 the tool decides whether it matches. It demonstrably describes images well — it produced
 "several cracks branching across the display" unprompted — but is unreliable at holding two
 facts in mind and comparing them.
