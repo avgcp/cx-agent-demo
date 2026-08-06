@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Phase: 2
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-08-05 - Completed quick task 260805-aze: Create presenter demo runbook for deployed Meridian voice claim agent
+Last activity: 2026-08-05 - Phase 5 plan 05-01 complete: chat channel with photo damage verification deployed
 
 Progress: [██████████] 100%
 
@@ -81,7 +81,8 @@ None yet.
 - GTM: Competitive framing vs. Microsoft Copilot/Nuance is LOW-MEDIUM confidence — treat as stakeholder input (Scott/Srini/Stephanie/Hallie) to validate, not asserted fact (see NARR-03).
 - Demo build: the customer-facing "FNOL Demo Narrative - V2.docx" describes a build that does not exist — it promises chat intake, photo upload, an EN↔ES switch, a $100 deductible, a $3,500 limit, a $1,000 threshold and $450/$2,400 claim amounts. The delivered agent is voice-only with a diagnostic tree, $25/$3,000/50%-of-coverage and $840/$3,000. Reconcile before the document goes to any customer or implementation team (Phase 5 scope).
 - Demo build: the implemented PoC diverges from the Phase 1 Mock Data Appendix (§4) — tariff-based pricing, a 50%-of-coverage auto-approve threshold, $25 excess and no photo-upload path. §4's $1,000 threshold, $100 deductible and $3,500 limit are stale against what a caller actually hears. Reconcile §4 (or mark it superseded) before the spec ships to any other implementation team.
-- Demo build: the claim email can only reach ONE mailbox. Resend's shared `onboarding@resend.dev` sender delivers only to the address owning the Resend account (`akash.vinayak@nerdery.com`) — confirmed by a 403 from Resend when tested against another address. Deployment is pinned to v7 `718b6fb3`, which mails that address; both paths verified live. Sending to a second recipient requires verifying a domain at resend.com/domains and changing the `from` address.
+- Phase 5: the model's vision accuracy on a REAL photo is unverified. Every branch of `assess_screen_crack` is tested, but only by supplying the observation values directly — the API can be driven with text, not with a convincing photo of a cracked screen. If it misreads a demo photo, the confirm path silently becomes the contradiction path in front of an audience. One upload through the deployed widget (`d7bfbb93`) settles it; blocks plan 05-02.
+- Demo build: the claim email can only reach ONE mailbox. Resend's shared `onboarding@resend.dev` sender delivers only to the address owning the Resend account (`akash.vinayak@nerdery.com`) — confirmed by a 403 from Resend when tested against another address. The phone deployment is pinned to v11 `b17c9a26`, which mails that address; both paths verified live. Sending to a second recipient requires verifying a domain at resend.com/domains and changing the `from` address.
 
 ### Quick Tasks Completed
 

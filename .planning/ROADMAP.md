@@ -127,7 +127,12 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 **Source material**: `assess_screen_crack` and the `case_summary` agent (with its `generate_case_summary` agent-as-tool) already exist in app `9ae7a0c3-6511-413c-8cdb-0efe9e90d2b9` ("Meridian Claim - Chat") and are worth porting. **That app must not be deployed or used as a base** — it is a fork of the pre-hardening build and carries none of the v1→v11 fixes, including a placeholder Resend key. Port the two components into the hardened app instead.
 
-**Plans:** 0 plans
+**Plans:** 1 complete, 3 outstanding
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 5 to break down)
+- [x] 05-01 — Chat channel with photo damage verification *(executed without a PLAN.md; see 05-01-SUMMARY.md)* — covers criteria 1, 2, 4
+- [ ] 05-02 — Decision card + quick actions (`widgetTool`: `ORDER_SUMMARY`, `QUICK_ACTIONS`) — **blocked** on confirming the vision read works in the real widget
+- [ ] 05-03 — `case_summary` / assessor briefing packet delivered as a second email — covers criterion 3
+- [ ] 05-04 — Spanish (es-US) across every customer-facing string — covers criterion 5
+
+**Built so far**: `Meridian Claim - Chat (hardened)` `a2f621e4-9faf-505a-b804-22471f022366`, deployment `d7bfbb93` (`WEB_UI`/`CHAT_ONLY`) on version `97f44790`. Voice app `6e01e4a5` untouched on v11 `b17c9a26`.
