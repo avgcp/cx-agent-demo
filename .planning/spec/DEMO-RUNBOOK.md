@@ -114,14 +114,14 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `97f44790-7d15-49d3-8d58-0c216f268345` |
+| Version live | `d46e67d4-126d-48a8-b296-3998d3975dff` |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | ☐ get from the console — Deployments → *chat - meridian demo* |
 
-> ⚠️ **Rehearse this one before you show it.** The photo branches are all verified, but
-> whether the model reads a *real* photo correctly has never been tested — I can drive text
-> through the API, not images. Upload your actual demo photo once and check it describes the
-> damage correctly before putting it in front of anyone.
+> **Verified on a real photo.** A cracked-screen image was read correctly in the simulator —
+> the agent reported *"I can see several cracks across the screen"*, confirmed the damage and
+> approved at $840. Still worth one rehearsal with **your** photo, since accuracy depends on
+> the image.
 
 **Have ready:** a clear photo of a cracked laptop screen, and — for the second beat — a
 photo of an **undamaged** laptop.
