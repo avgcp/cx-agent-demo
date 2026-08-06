@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Component Architecture** - Specify the agent architecture and tool/data inventory that per-use-case specs will reference
 - [ ] **Phase 3: Use-Case Specs** - Write the 9 fixed-template use-case specs plus 4 differentiator add-ons (parallelizable)
 - [ ] **Phase 4: Runbook & Synthesis** - Produce the presenter runbook, roll up global acceptance criteria, and close out open questions/risks
+- [ ] **Phase 5: Demo Build — Multimodal, Backend Reveal & Multilingual** - Add photo damage verification, the backend claims-processing reveal, a web channel, and Spanish to the deployed agent _(BUILD PHASE — see caveat below)_
 
 ## Phase Details
 
@@ -105,3 +106,28 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Component Architecture | 0/2 | Planned | - |
 | 3. Use-Case Specs | 0/TBD | Not started | - |
 | 4. Runbook & Synthesis | 0/TBD | Not started | - |
+
+### Phase 5: Demo Build — Multimodal, Backend Reveal & Multilingual
+
+> **⚠ This phase departs from the roadmap's framing.** Phases 1–4 produce *specification text*; their success criteria are properties of that text. This phase changes a **running agent** — CX Agent Studio app `6e01e4a5-42a8-5213-b3da-c9053ff8ea52`, live on version **v11 `b17c9a26`** via GTP deployment `d28bbcb0`. Its success criteria are therefore observable behaviours of a deployed system, verified by driving real conversations. The demo was built and delivered ahead of the spec; this phase records the work that follows from that.
+
+**Goal**: The deployed FNOL agent gains the three capabilities the demo narrative promises but the build never had — photo-based damage verification, a visible backend claims-processing artifact, and Spanish — without weakening any determinism guarantee established during the v1→v11 hardening.
+
+**Depends on**: Nothing in this roadmap. Operates directly on the deployed agent; independent of Phases 2–4.
+
+**Requirements**: (to be assigned — this phase predates its requirement IDs)
+
+**Success Criteria** (what must be TRUE of the deployed agent):
+  1. A customer can attach a photo of the damage, and the agent reports what it can actually see in that image — confirming or contradicting what the customer reported — while the **claim amount continues to come from the deterministic tariff and never from the vision read**.
+  2. The anti-fraud path holds: a reported crack that is absent from the photo sets `photo_contradiction`, routes to human review under DL-5, and is communicated to the customer without accusing them of anything. An unusable photo gets exactly one retry before a human is involved, and a photo of the wrong object is rejected.
+  3. Every resolved claim produces a reviewable artifact — a customer confirmation email on the autonomous path, a structured assessor briefing packet (SUMMARY / ACTION / CLAIM / DIAGNOSTIC / RULES FIRED / FLAGS) on the escalated path — and the assessor packet is delivered as a real message so the artifacts are demonstrable without a bespoke reveal screen.
+  4. A `WEB_UI` deployment with file upload runs alongside the existing GTP phone deployment, and **the phone deployment continues to serve its pinned version unchanged**.
+  5. A caller can complete the full claim in Spanish (es-US), with every customer-facing string — the verbatim-read decision explanation, the claim email, diagnostic questions, empathy lines, and the send-away checklist — available in that language rather than English text spoken with a Spanish voice.
+  6. All hardening from v1→v11 still holds after the changes: deterministic pricing, single-send email, policy-ID digit rescue, liquid-ingress disambiguation, no self-narration, no double-speaking.
+
+**Source material**: `assess_screen_crack` and the `case_summary` agent (with its `generate_case_summary` agent-as-tool) already exist in app `9ae7a0c3-6511-413c-8cdb-0efe9e90d2b9` ("Meridian Claim - Chat") and are worth porting. **That app must not be deployed or used as a base** — it is a fork of the pre-hardening build and carries none of the v1→v11 fixes, including a placeholder Resend key. Port the two components into the hardened app instead.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 5 to break down)
