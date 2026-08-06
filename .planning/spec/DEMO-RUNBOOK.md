@@ -1,12 +1,18 @@
-# Demo Runbook — Meridian Claims Concierge (voice)
+# Demo Runbook — Meridian Claims Concierge
 
 **For the presenter. Read this standing up.**
+
+Two channels, two apps: **phone** (voice) and **chat** (photo). They share the seeded
+policies, the claim logic and the email, but they are separate deployments — a change to one
+does not affect the other.
 
 Everything below was verified on the deployed build. Figures come from the agent's own
 pricing tool, not from the Mock Data Appendix (§4) — the implementation diverged from that
 appendix and this runbook matches what actually happens on the line.
 
 ---
+
+# Phone channel
 
 ## Call this number
 
@@ -100,6 +106,77 @@ everything?".
 
 ---
 
+# Chat channel — the photo demo
+
+**A separate app from the phone.** Same claims logic, same seeded policies, same email —
+but the customer can show you the damage, which the phone run cannot do.
+
+| | |
+|---|---|
+| App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
+| Version live | `97f44790-7d15-49d3-8d58-0c216f268345` |
+| Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
+| Widget embed | ☐ get from the console — Deployments → *chat - meridian demo* |
+
+> ⚠️ **Rehearse this one before you show it.** The photo branches are all verified, but
+> whether the model reads a *real* photo correctly has never been tested — I can drive text
+> through the API, not images. Upload your actual demo photo once and check it describes the
+> damage correctly before putting it in front of anyone.
+
+**Have ready:** a clear photo of a cracked laptop screen, and — for the second beat — a
+photo of an **undamaged** laptop.
+
+## Scenario C — photo confirms the damage  *(the main chat run)*
+
+| You type | Agent should |
+|---|---|
+| *"Hi, my name is Jordan Rivera and my policy is PDP100294"* | Verify and open with your MacBook |
+| *"I dropped my laptop and the screen is cracked. No liquid, and it still switches on and works normally otherwise."* | **Ask for a photo** — it will not price anything first |
+| *(attach the cracked-screen photo)* | Describe what it can see, then approve |
+| *"Okay that works"* | Confirm the email |
+| *"No thanks"* | Close |
+
+**The moment to point at:** it says back what it actually sees — *"I can see the crack
+running from the lower left across the panel"* — before any decision. That line is the proof
+it looked at the image rather than taking your word for it.
+
+Then the usual: **$840**, under the **$1,500** limit, **$25** excess, `CLM-24xxx`, and a real
+email.
+
+## Scenario D — the photo disagrees  *(the strongest beat)*
+
+| You type | Agent should |
+|---|---|
+| *"Hi, my name is Jordan Rivera and my policy is PDP100294"* | Verify |
+| *"I dropped my laptop and the screen is cracked. No liquid, and it still works otherwise."* | Ask for a photo |
+| *(attach the photo of the **undamaged** laptop)* | Decline to approve, route to a specialist |
+
+It will **not** auto-approve, and it will **not** accuse anyone:
+
+> *"Thanks for sending that over. I'd like one of our specialists to take a closer look at
+> the photo before we settle this, so I'm passing it on with everything we've discussed —
+> you won't need to go over it again."*
+
+No price is quoted, because nothing was verified. Behind it, `photo_contradiction` is set and
+**DL-5** lands in the audit trail.
+
+This is the answer to *"what stops someone just claiming anything?"* — and it lands better
+than any slide, because the audience watched it happen.
+
+**Other photo cases**, if someone asks:
+- A blurry or badly framed photo gets **one** retry, with a specific reason, then a human.
+- A photo of the wrong object is rejected — it names the device on the policy instead.
+
+## What's different from the phone run
+
+- It writes in short structured messages rather than one-thing-per-turn speech.
+- It will show the email address on file; on the phone it never reads one out.
+- The escalation and cross-sell beats behave the same.
+- **The photo gate only applies to screen repairs.** A liquid total loss escalates
+  immediately, exactly as on the phone — no photo needed.
+
+---
+
 ## Seeded policies
 
 | Policy ID | Name | Covered device | Coverage | Approves up to | Excess | Uninsured (cross-sell) |
@@ -145,7 +222,7 @@ Save it for the cross-sell.
 
 ---
 
-## If something goes wrong
+## If something goes wrong  *(phone)*
 
 **Roll back the deployment.** One call, takes seconds:
 
