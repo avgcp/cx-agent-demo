@@ -114,7 +114,7 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `d46e67d4-126d-48a8-b296-3998d3975dff` |
+| Version live | `56a8b22a-2baf-4b18-9540-cdc6185acbee` — *chat v6, wrong-subject guard removed* |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | ☐ get from the console — Deployments → *chat - meridian demo* |
 
@@ -165,7 +165,26 @@ than any slide, because the audience watched it happen.
 
 **Other photo cases**, if someone asks:
 - A blurry or badly framed photo gets **one** retry, with a specific reason, then a human.
-- A photo of the wrong object is rejected — it names the device on the policy instead.
+
+> ### ⚠ Run the demo with matching device/policy pairs
+>
+> **The photo confirms whether the reported damage is visible. It cannot verify that the
+> photographed device is the insured device.** Jordan Rivera / **PDP100294 is a MacBook — use
+> a laptop photo.** Maria Santos / PDP100583 is an iPhone, so that policy needs a phone photo,
+> and so on down the seeded table below.
+>
+> **What happens if someone in the audience hands you a mismatched photo:** the agent will
+> describe what it sees, confirm the crack and approve the claim at the **tariff price for the
+> policy's own device** — a phone photo on the MacBook policy still prices as a MacBook screen
+> at $840. It will not flag the mismatch. Expect this rather than being surprised by it.
+>
+> **The honest answer if you are asked directly:** we tried twice to make the model verify
+> device identity from the image and it failed both times — it already knows what the policy
+> covers and conforms its description to that rather than to the pixels. Rather than ship a
+> check that reads like protection and isn't, we removed it (2026-08-06). Confirming that the
+> item photographed is the item insured is a claims-ops control — serial numbers, IMEI, policy
+> records — not a vision-model job. What the model *is* reliably good at is the thing the demo
+> actually shows: reading the damage, and refusing to approve when the damage isn't there.
 
 ## What's different from the phone run
 

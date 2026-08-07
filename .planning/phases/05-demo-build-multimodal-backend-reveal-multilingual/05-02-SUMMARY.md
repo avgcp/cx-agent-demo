@@ -59,7 +59,8 @@ This is the same failure mode designed out everywhere else in this build during 
 judgment call left with the model rather than enforced in code. It was inherited when the
 tool was ported from `9ae7a0c3` and its interface was not re-examined.
 
-**Fix applied**: replaced `image_shows_device` (a comparison) with `device_in_photo`
+**Fix applied** *(chat v4 — verified offline only; it failed live and no longer exists in the
+build, see Resolution below)*: replaced `image_shows_device` (a comparison) with `device_in_photo`
 (an observation — `laptop` | `phone` | `other` | `unclear`) compared against `device_category`
 from the policy record inside the tool. Verified: laptop-on-phone and phone-on-laptop both
 rejected; matching device still approves at $840 / $420; wrong object, unclear, contradiction
@@ -77,7 +78,10 @@ screen"* and *"I can see several cracks branching across the display"*.
 
 ---
 
-# Wrong-subject guard: unresolved (as of chat v5 `5ccd34a4`)
+# Wrong-subject guard: removed by decision (resolved 2026-08-06, chat v6 `56a8b22a`)
+
+*Sections below record the investigation as it stood at chat v5 `5ccd34a4`. The
+**Resolution** section at the end records the decision taken and what the build does now.*
 
 ## The finding
 
@@ -133,3 +137,62 @@ model actually produced, but that is a regression guard, not a fix.
 
 The contradiction path (crack reported, none visible) is **unaffected** and still works: it
 only asks about damage, which the model reports honestly.
+
+## Resolution — option 2, accept the limitation (user decision, 2026-08-06)
+
+Executed as quick task `260806-u21`.
+
+**The decision, in the user's framing:** *a guard that does not work is worse than none,
+because it reads as protection in both the code and the runbook.* Option 1
+(agent-as-tool vision isolation) was explicitly **not** attempted — it rests on an unverified
+assumption about whether CES gives a sub-agent a clean context, and a third failed structural
+attempt would buy nothing the documentation cannot state honestly today.
+
+**What was removed** from `assess_screen_crack` (chat v6 `56a8b22a-2baf-4b18-9540-cdc6185acbee`):
+
+| Removed | Note |
+|---|---|
+| `keyboard_visible`, `hinged_lid` parameters | Signature is now exactly `(crack_visible, what_you_see)` — confirmed server-side via `retrieveToolSchema` |
+| The device-inference block | Laptop/phone signal counting and keyword matching, and the comparison against `device_category` |
+| The `WRONG_SUBJECT` return and `photo_check="rejected"` | `"rejected"` is now unreachable; it is retained defensively in `resolve_claim`'s `photo_blocked` set with a comment saying so |
+| The `photo_device_seen` session variable | Declaration removed from the app; nothing else referenced it |
+| The instruction paragraph telling the agent to answer physical questions and ignore the policy | Replaced with one sentence: describe the object and the damage plainly in `what_you_see` |
+
+A code comment at the top of the function records **why** the check is absent, so a future
+reader does not "fix" the omission by reintroducing the same failure.
+
+**What still holds** — all proven offline against the edited source in `phototest2.py`:
+
+- The contradiction path: a reported crack absent from the photo sets `photo_contradiction`,
+  returns `NO_DAMAGE_VISIBLE`, fires **DL-5**, forces `HUMAN_REVIEW`, and says nothing
+  accusatory.
+- The unusable-photo path: exactly one retry, then a human.
+- Deterministic tariff pricing — $840 for a screen, $3,000 total loss — never from the vision read.
+- The total-loss path, the bad-enum rejection, and all v1→v11 hardening.
+
+**A junk photo now lands in `unclear`, not in a rejection.** A picture with no device or no
+screen in it is caught by `crack_visible="unclear"` → one retry → human review, which is the
+same end state the removed guard produced. That enum's description was deliberately
+strengthened to name "no screen and no device visible in the picture at all" as one of its
+cases, because it is now the only thing standing between a junk photo and an approval.
+
+**The limitation, stated for reuse:**
+
+> **Photo assessment confirms whether the reported damage is visible. It cannot verify that
+> the photographed device is the insured device. Demos must use matching device/policy pairs.**
+
+`phototest2.py` now asserts this as an explicit passing test — it feeds the exact false report
+the model produced live (`"a black phone with several cracks on the screen"` against
+PDP100294, a MacBook) and asserts the claim proceeds and is priced from the tariff at $840.
+The limitation is a visible test result, not a silent absence.
+
+**Version and deployment:** chat v6 `56a8b22a-2baf-4b18-9540-cdc6185acbee` was cut, and the
+customer-facing chat deployment `d7bfbb93` was repointed to it (confirmed serving). Both
+widget tools survived the export→edit→import round trip, verified in the fresh export before
+editing and again server-side after the push. Voice app `6e01e4a5` untouched, still pinned to
+v11 `b17c9a26`.
+
+**Still open on 05-02** (why this plan stays `status: incomplete`): widget rendering is still
+unverified through the real embed, and `cover_offer_actions` has still never fired. Separately,
+the contradiction path has not been re-run live against chat v6 — it needs a photo of an
+undamaged device, which the executing session did not have; it is proven offline only.

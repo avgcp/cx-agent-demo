@@ -71,7 +71,11 @@ Offline (`phototest.py`), all passing:
 - Photo confirms → $840, auto-approve, one email
 - Photo contradicts → `HUMAN_REVIEW`, DL-5, no price quoted, no accusation
 - Unclear photo → one retry, then human
-- Wrong subject → rejected, names the covered device
+- ~~Wrong subject → rejected, names the covered device~~ — **no longer true.** This branch was
+  only ever verified offline by supplying the observation directly. It failed against real
+  photos twice and was removed on 2026-08-06 (chat v6 `56a8b22a`). The photo confirms whether
+  the reported damage is visible; it cannot verify that the photographed device is the insured
+  device. See the Resolution section of 05-02-SUMMARY.md.
 - Total-loss path unaffected by photo logic
 
 On the deployed chat channel: the diagnostic completes, the agent **asks for a photo**, and
