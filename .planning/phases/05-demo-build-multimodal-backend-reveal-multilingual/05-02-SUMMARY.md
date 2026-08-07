@@ -44,7 +44,7 @@ server-side. The local source had to be refreshed via `exportApp` before the nex
 - **`cover_offer_actions` has never fired.** The tool exists and is wired, but no test run
   has reached the cross-sell step cleanly.
 
-## Defect found during testing — FIXED (chat v4 `7710088b`)
+## Defect found during testing — TWO FIXES ATTEMPTED, BOTH FAILED
 
 **The wrong-subject guard does not work.** A photo of a **laptop** was accepted and
 auto-approved against **PDP100583** (Maria Santos, iPhone 16 Pro Max) — payload shows
@@ -73,3 +73,63 @@ facts in mind and comparing them.
 
 The vision read itself is good, on two real photos: *"I can see several cracks across the
 screen"* and *"I can see several cracks branching across the display"*.
+
+
+---
+
+# Wrong-subject guard: unresolved (as of chat v5 `5ccd34a4`)
+
+## The finding
+
+**The photo assessment cannot verify *which device* is in the image, and this is not
+fixable by prompting.** Two structural attempts both failed against live testing.
+
+| Version | Approach | Outcome |
+|---|---|---|
+| v4 `7710088b` | Model reports the device category (`device_in_photo`), tool compares against `device_category` in code | Model reported `"phone"` while looking at a laptop |
+| v5 `5ccd34a4` | Model reports **physical features** (`keyboard_visible`, `hinged_lid`) plus a named description; tool infers the device and compares | Model reported `keyboard_visible: "no"`, `hinged_lid: "no"`, and *"a black phone with several cracks on the screen"* |
+
+## The evidence
+
+`evidence-laptop-photo.png` in this directory is the exact image uploaded in
+`simulator-da97c67a` against **PDP100746 (Apple iPhone 16)**. It is an unmistakable MacBook:
+a full keyboard with individual keys fills the lower half of the frame, with a trackpad and
+a hinged aluminium lid. It was approved at $280 as an iPhone screen repair.
+
+Retrieved by decoding the base64 PNG stored inline in the conversation record
+(`turns[n].messages[].chunks[].image.data`) — worth knowing, as it makes any past image
+claim auditable after the fact.
+
+## Root cause
+
+The model already knows what the policy covers by the time it sees the photo, and its
+report conforms to that rather than to the image. This is not a labelling problem: it
+answered three independent, concrete, physical questions falsely against overwhelming
+visual evidence.
+
+Note also that the vision capability itself is **good** — the same model produced
+"several cracks branching across the display" accurately on two occasions. It reports the
+damage faithfully and the identity unfaithfully, because only the identity conflicts with
+the surrounding context.
+
+## Why the offline tests did not catch either attempt
+
+Both suites supplied the observation values directly, which proved the comparison logic and
+never the observation. A test that feeds the tool `device_in_photo="laptop"` cannot detect
+that the model would have said `"phone"`. The suites now include the misleading inputs the
+model actually produced, but that is a regression guard, not a fix.
+
+## Options
+
+1. **Isolate the vision call** in an agent-as-tool with no policy knowledge — it receives
+   only the image and answers what it shows. Removing the context is the only structural
+   fix. Unknown: whether CES gives such a sub-agent a clean context or passes conversation
+   history through. If it inherits history, this fails identically. The pattern exists
+   (`generate_case_summary` in `9ae7a0c3` is an agent-as-tool).
+2. **Accept the limitation.** Remove the wrong-subject guard, document that photo
+   verification confirms *damage* but not *device identity*, and keep demos on matching
+   device/policy pairs. **A guard that does not work is worse than none** — it reads as
+   protection in both the code and the runbook.
+
+The contradiction path (crack reported, none visible) is **unaffected** and still works: it
+only asks about damage, which the model reports honestly.

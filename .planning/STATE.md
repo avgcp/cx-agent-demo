@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 stopped_at: Phase 2 context gathered
 last_updated: "2026-08-06T02:20:36.140Z"
-last_activity: "2026-08-06 - Phase 5 plan 05-02 in progress: decision card + quick actions built; wrong-subject photo defect found"
+last_activity: "2026-08-06 - Phase 5: wrong-subject photo guard proven unfixable by prompting; decision needed on isolate-vs-accept"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 5 (active) — Phase 2 still unstarted
-Plan: 05-01 complete; 05-02 in progress (widgets built, rendering unverified, defect open); 05-03/04 outstanding
+Plan: 05-01 complete; 05-02 in progress (widgets built, rendering unverified, wrong-subject guard unresolved); 05-03/04 outstanding
 Status: Build work running ahead of the spec phases. Phases 2-4 author specification text and remain unstarted; Phase 5 changes the deployed agent and is where activity currently is.
-Last activity: 2026-08-06 - Phase 5 plan 05-02 in progress: decision card + quick actions built; wrong-subject photo defect found
+Last activity: 2026-08-06 - Phase 5: wrong-subject photo guard proven unfixable by prompting; decision needed on isolate-vs-accept
 
 Progress: [██████████] 100%
 
@@ -82,7 +82,7 @@ None yet.
 - Demo build: the customer-facing "FNOL Demo Narrative - V2.docx" describes a build that does not exist — it promises chat intake, photo upload, an EN↔ES switch, a $100 deductible, a $3,500 limit, a $1,000 threshold and $450/$2,400 claim amounts. The delivered agent is voice-only with a diagnostic tree, $25/$3,000/50%-of-coverage and $840/$3,000. Reconcile before the document goes to any customer or implementation team (Phase 5 scope).
 - Demo build: the implemented PoC diverges from the Phase 1 Mock Data Appendix (§4) — tariff-based pricing, a 50%-of-coverage auto-approve threshold, $25 excess and no photo-upload path. §4's $1,000 threshold, $100 deductible and $3,500 limit are stale against what a caller actually hears. Reconcile §4 (or mark it superseded) before the spec ships to any other implementation team.
 - Phase 5 (RESOLVED 2026-08-05): the model's vision accuracy on a real photo is confirmed — a cracked-screen image was read correctly in the simulator ("I can see several cracks across the screen"), confirmed, and auto-approved at $840. Plan 05-02 is unblocked. Original concern: Every branch of `assess_screen_crack` is tested, but only by supplying the observation values directly — the API can be driven with text, not with a convincing photo of a cracked screen. If it misreads a demo photo, the confirm path silently becomes the contradiction path in front of an audience. One upload through the deployed widget (`d7bfbb93`) settles it; blocks plan 05-02.
-- Phase 5 (RESOLVED 2026-08-06): the wrong-subject photo guard failed — a laptop photo was auto-approved against PDP100583 (iPhone 16 Pro Max). Cause: `assess_screen_crack` asked the MODEL whether the photo matched the policy. Fixed by replacing that comparison with an observation (`device_in_photo`: laptop|phone|other|unclear) compared against `device_category` in code. Verified both directions plus wrong-object, unclear, contradiction and bad-enum cases. Chat deployment on v4 `7710088b`.
+- Phase 5 KNOWN LIMITATION (open, 2 fixes failed): photo assessment cannot verify WHICH device is in the image. v4 asked the model for the device category, v5 asked for physical features (keyboard visible, hinged lid) and inferred in code. Both failed live: against PDP100746 (iPhone) the model reported keyboard_visible=no, hinged_lid=no and "a black phone" for an unmistakable MacBook — see evidence-laptop-photo.png in the phase dir, decoded from the conversation record. Root cause: the model knows what the policy covers and conforms its report to that, not to the pixels. Damage reporting is accurate; only identity is contaminated. Options: (a) isolate the vision call in an agent-as-tool with no policy context — unknown whether CES gives it a clean context; (b) remove the guard and document that photos confirm damage, not device identity, keeping demos on matching device/policy pairs. A guard that does not work is worse than none. The contradiction path (crack reported, none visible) is unaffected.
 - Phase 5: widget rendering unverified. The console Preview panel shows "custom payload in JSON" rather than drawing the card; rich response widgets are web-widget-only, so this needs a test through the real embed on deployment `d7bfbb93`. Payload shape is confirmed correct (platform tags it `"type": "order_summary"`).
 - Phase 5 (resolved): CES quota is the binding constraint on testing. `RunSession LLM tokens` defaults to 1,000/min per project/region/model while a single conversation costs 120k-150k input tokens (3.5k-10.8k per turn). Raise it in IAM → Quotas before any demo; also `Concurrent BidiRunSession Operations` (10 per 30 min) if more than one person will use the phone.
 - Demo build: the claim email can only reach ONE mailbox. Resend's shared `onboarding@resend.dev` sender delivers only to the address owning the Resend account (`akash.vinayak@nerdery.com`) — confirmed by a 403 from Resend when tested against another address. The phone deployment is pinned to v11 `b17c9a26`, which mails that address; both paths verified live. Sending to a second recipient requires verifying a domain at resend.com/domains and changing the `from` address.

@@ -131,8 +131,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 Plans:
 - [x] 05-01 — Chat channel with photo damage verification *(executed without a PLAN.md; see 05-01-SUMMARY.md)* — covers criteria 1, 2, 4
-- [~] 05-02 — Decision card + quick actions — built and deployed (chat v4 `7710088b`); card invocation and payload confirmed (`"type": "order_summary"`), **rendering unverified** (Preview shows raw JSON; needs the real embed) and `cover_offer_actions` never fired. Wrong-subject photo defect found and fixed. See 05-02-SUMMARY.md
+- [~] 05-02 — Decision card + quick actions — built and deployed (chat v4 `7710088b`); card invocation and payload confirmed (`"type": "order_summary"`), **rendering unverified** (Preview shows raw JSON; needs the real embed) and `cover_offer_actions` never fired. Wrong-subject photo guard **unresolved** — two attempts failed; see 05-02-SUMMARY.md. See 05-02-SUMMARY.md
 - [ ] 05-03 — `case_summary` / assessor briefing packet delivered as a second email — covers criterion 3
 - [ ] 05-04 — Spanish (es-US) across every customer-facing string — covers criterion 5
 
-**Built so far**: `Meridian Claim - Chat (hardened)` `a2f621e4-9faf-505a-b804-22471f022366`, deployment `d7bfbb93` (`WEB_UI`/`CHAT_ONLY`) on version `7710088b` (chat v4). Voice app `6e01e4a5` untouched on v11 `b17c9a26`.
+**Built so far**: `Meridian Claim - Chat (hardened)` `a2f621e4-9faf-505a-b804-22471f022366`, deployment `d7bfbb93` (`WEB_UI`/`CHAT_ONLY`) on version `5ccd34a4` (chat v5). Voice app `6e01e4a5` untouched on v11 `b17c9a26`.
