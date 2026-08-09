@@ -114,13 +114,15 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `56a8b22a-2baf-4b18-9540-cdc6185acbee` — *chat v6, wrong-subject guard removed* |
+| Version live | `bb14cdcc-d723-4be1-85af-9f4451e22ed5` — *chat v7, decision card renders* |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
-| Widget embed | ☐ get from the console — Deployments → *chat - meridian demo* |
+| Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
-> **Verified on a real photo.** A cracked-screen image was read correctly in the simulator —
-> the agent reported *"I can see several cracks across the screen"*, confirmed the damage and
-> approved at $840. Still worth one rehearsal with **your** photo, since accuracy depends on
+> **Verified on a real photo, through the real widget.** On 2026-08-09 the whole path was
+> driven through the real widget in a browser: a real cracked-MacBook photo was uploaded,
+> displayed inline, and read correctly (*"I can see the cracks on the screen there."*), then
+> priced from the tariff at $840 and auto-approved as `CLM-24442` with the decision card
+> drawn on screen. Still worth one rehearsal with **your** photo, since accuracy depends on
 > the image.
 
 **Have ready:** a clear photo of a cracked laptop screen, and — for the second beat — a
@@ -133,6 +135,7 @@ photo of an **undamaged** laptop.
 | *"Hi, my name is Jordan Rivera and my policy is PDP100294"* | Verify and open with your MacBook |
 | *"I dropped my laptop and the screen is cracked. No liquid, and it still switches on and works normally otherwise."* | **Ask for a photo** — it will not price anything first |
 | *(attach the cracked-screen photo)* | Describe what it can see, then approve |
+| *(the decision card draws)* | See below |
 | *"Okay that works"* | Confirm the email |
 | *"No thanks"* | Close |
 
@@ -143,7 +146,33 @@ it looked at the image rather than taking your word for it.
 Then the usual: **$840**, under the **$1,500** limit, **$25** excess, `CLM-24xxx`, and a real
 email.
 
+**What the card looks like on screen — verified live 2026-08-09:**
+
+- Title `Apple MacBook Pro 16"` with `$840.00` right-aligned on the same row.
+- Subtitle `Screen replacement · CLM-24442 · $840 less $25 excess = $815 to you · Approved on
+  the spot (on-the-spot limit $1,500)` (the claim number will differ each run).
+
+**Expected, not a bug.** A presenter will see two cosmetic artifacts and should not be
+alarmed by either: a small **empty grey image tile** at the left of the card — there is no
+product image — and **two horizontal divider rules** below the row with nothing after them —
+no cost breakdown, payment method or buttons are sent, deliberately, because the SDK would
+otherwise print an unchangeable "Sales tax $0.00" line and live buttons that inject text into
+the conversation when tapped.
+
+**Presenter warning: the agent will most likely say nothing alongside the card.** The
+decision and the reason are in the card's small subtitle only, so **read the card out loud**
+("$840 to fix, $25 excess, $815 to you, approved on the spot because it's under the $1,500
+limit") rather than waiting for the agent to say it. This is a known open issue, not a fault
+of the run.
+
+Terse input works: the verified run used just *"PDP100294, Jordan Rivera"* and *"cracked. no
+water but it still works"*.
+
 ## Scenario D — the photo disagrees  *(the strongest beat)*
+
+> ⚠ **Unverified live.** This scenario is proven **offline only** (`phototest2.py`) and has
+> **never been run live through the widget**. Rehearse it with the undamaged-device photo
+> before showing it to a customer.
 
 | You type | Agent should |
 |---|---|
@@ -289,6 +318,10 @@ what the phone number serves — you must cut a new version and repoint the depl
   Doesn't affect the call.
 - The decision turn can take ~4 seconds when the agent reaches for pricing slightly early.
   It self-corrects; it just sits quiet a beat longer.
+- **Chat:** the decision card shows an empty grey image tile and two trailing divider rules
+  with nothing after them. Expected — see the "Expected, not a bug" note under Scenario C.
+- **Chat:** the silent decision turn — the agent draws the card without a sentence stating
+  the decision. Read the card aloud; see the presenter warning under Scenario C.
 
 ---
 

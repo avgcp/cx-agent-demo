@@ -157,6 +157,34 @@ The name is misleading and it matters — see the open defect below.
 
 ---
 
+## Rendering — CONFIRMED BY EYE 2026-08-09 (quick task 260809-nt7)
+
+The user drove a full chat claim through the real, console-generated chat-messenger SDK
+**v1.16** widget embed, served locally at `http://localhost:3000` with a token broker,
+against deployment `d7bfbb93` serving chat v7 `bb14cdcc`.
+
+**The card drew.** Title `Apple MacBook Pro 16"` with right-aligned price **`$840.00`** on
+the same row. Subtitle: `Screen replacement · CLM-24442 · $840 less $25 excess = $815 to
+you · Approved on the spot (on-the-spot limit $1,500)`.
+
+The two predicted cosmetic artifacts appeared: a small empty grey image tile at the left,
+and two divider rules below the row with nothing after them — both expected consequences of
+deliberately dropping `costBreakdown` and `actions`, not defects.
+
+**Load-bearing part: none of the five failure modes the SDK contract predicted occurred.**
+No `$4,200.00` from a units-as-string, no `$NaN` from an absent `nanos`, no hardcoded `Sales
+tax $0.00` row, no broken-image glyph in place of the 1×1 GIF, and no raw JSON. This makes
+the `order_summary` contract documented above **verified by observation**, not only read
+from source, and therefore safe to reuse for future widgets.
+
+This run also closed two things beyond rendering, neither of which this plan had ever had
+evidence for: **photo upload through the real browser widget** — it needed no Cloud Storage
+configuration, `enable-file-upload` alone sufficed — and **the end-to-end chat claim through
+the real embed**. The vision read was accurate on a matching device/policy pair: *"I can see
+the cracks on the screen there."*
+
+---
+
 ## What was built instead (chat v7 `bb14cdcc-d723-4be1-85af-9f4451e22ed5`)
 
 Given the contract, `costBreakdown`, `paymentMethod` and `actions` were all **deliberately
@@ -370,13 +398,22 @@ widget tools survived the export→edit→import round trip, verified in the fre
 editing and again server-side after the push. Voice app `6e01e4a5` untouched, still pinned to
 v11 `b17c9a26`.
 
-**Still open on 05-02** (why this plan stays `status: incomplete`), as of 2026-08-09:
+**Still open on 05-02** (why this plan stays `status: incomplete`), as of 2026-08-09. This
+plan is *"Decision card + quick actions"*, and while the decision card is now built, deployed
+and visually confirmed, `cover_offer_actions` — the other half of the plan's own title — has
+never fired once and is known defective against the `quick_actions` contract, so the plan
+cannot be complete. The silent decision turn is a second, lesser reason. Exactly one of the
+plan's four open items closed on 2026-08-09:
 
-- **The card's on-screen render is still unconfirmed by eye.** The payload now provably matches
-  the SDK contract and was verified on a live chat-v7 run, but nobody has yet watched the card
-  draw in a browser. Only a human at `http://localhost:3000` can close this.
+- ~~**The card's on-screen render is still unconfirmed by eye.** The payload now provably
+  matches the SDK contract and was verified on a live chat-v7 run, but nobody has yet watched
+  the card draw in a browser. Only a human at `http://localhost:3000` can close this.~~
+  **CLOSED 2026-08-09** (quick task 260809-nt7) — see *"Rendering — CONFIRMED BY EYE
+  2026-08-09"* above.
 - **`cover_offer_actions` has still never fired**, and is now also believed defective against
   the `quick_actions` schema — unfixed.
 - **The decision turn says nothing alongside the card** (open defect, above).
-- The **photo contradiction path** has not been re-run live since chat v6 — it needs a photo of
-  an undamaged device, which no executing session has had; proven offline only.
+- The **photo CONFIRM path is now verified live** (2026-08-09, quick task 260809-nt7, chat v7
+  `bb14cdcc`). The **photo CONTRADICTION path** remains not verified live — it needs a photo
+  of an undamaged device through the widget, which no executing session has had; proven
+  offline only, in `phototest2.py`.
