@@ -33,16 +33,194 @@ server-side. The local source had to be refreshed via `exportApp` before the nex
 
 - `claim_decision_card` is invoked and receives the correct payload, verified on a live run
   (`CLM-24689`, keyboard replacement, $420, $25 excess, cutoff $1,500).
-- The platform tags it `"type": "order_summary"`, so the widget is correctly formed.
+- ~~The platform tags it `"type": "order_summary"`, so the widget is correctly formed.~~
+  **Corrected 2026-08-09.** The tag proves the payload is *well-formed*, which is not the same
+  as matching the renderer's contract — and it did not. See *"Rendering — ANSWERED"* above.
+  This inference is what kept the real cause hidden.
 
-## Not confirmed
+## Rendering — ANSWERED 2026-08-09 (quick task `260809-n1b`, chat v7 `bb14cdcc`)
 
-- **Rendering.** The console Preview panel shows *"Agent response contained a custom
-  payload"* rather than drawing a card. Consistent with rich response widgets being
-  web-widget-only (`CLAUDE.md` §Tools). Needs a test through the real embed on deployment
-  `d7bfbb93` — not Preview.
-- **`cover_offer_actions` has never fired.** The tool exists and is wired, but no test run
-  has reached the cross-sell step cleanly.
+The card did not draw because **its declared `parameters` — and therefore its emitted payload —
+matched none of the fields the deployed web-widget SDK's `order_summary` renderer reads.**
+
+This was **not** an SDK limitation, **not** an agent defect, and **not** the Preview-panel
+limitation it was originally attributed to below. It was a schema mismatch in the tool's own
+definition, found by disassembling the deployed bundle
+`https://www.gstatic.com/chat-messenger/sdk/prod/v1.16/chat-messenger.js`.
+
+The original diagnosis in this section was wrong in an instructive way: the payload was
+**well-formed** — the platform tagged it `"type": "order_summary"` — and that was read as
+"the payload is correct". *Well-formed is not the same as matching the renderer's contract.*
+The SDK copied four keys off the payload, found all four undefined, and drew nothing, so the
+raw payload is what appeared on screen.
+
+- **`cover_offer_actions` has still never fired**, and now also looks defective — see
+  *"`cover_offer_actions` is very likely broken the same way"* below.
+
+---
+
+## The SDK `order_summary` contract (reusable — read from source, not inferred)
+
+Everything here is read from `chat-messenger.js` v1.16. **Reuse this for every future widget.**
+
+### How a widget payload reaches the renderer
+
+```js
+case "order_summary":
+  c = new DF_Mzz(a.utterance.utteranceId, b.id);
+  c.productItem   = b.productItem;
+  c.costBreakdown = b.costBreakdown;
+  c.paymentMethod = b.paymentMethod;
+  c.actions       = b.actions;
+```
+
+`b` is the widget payload. **Only these four keys are read; everything else is discarded
+silently.** A widget tool's declared `parameters` *are* its emitted payload, so getting a card
+to draw is a schema-authoring job, not an agent-prompting job.
+
+| Section | Sub-fields read |
+|---|---|
+| `productItem` | `title`, `subtitle`, `price`, `imageUri` |
+| `costBreakdown` | `subtotal`, `salesTax`, `discount`, `shipping`, `total` |
+| `paymentMethod` | `brand`, `lastFour` |
+| `actions` | `primaryLabel`, `secondaryLabel` |
+
+The platform adds `"type": "order_summary"` itself — never declare a `type` parameter.
+
+### Money is `google.type.Money`, and `units` must be a NUMBER
+
+```js
+function DF_MEz(a){if(!a)return (...USD...).format(0);
+var b=a.units+a.nanos/1E9;
+return (new Intl.NumberFormat("en-US",{style:"currency",currency:a.currencyCode,...})).format(b)}
+```
+
+There is **no `Number()` coercion**. `a.units` goes straight into a `+` expression:
+
+| Emitted | Renders |
+|---|---|
+| `{units: 420, nanos: 0, currencyCode:"USD"}` | `$420.00` ✅ |
+| `units` as a proto3 int64 **string** `"420"` | `"420"+0` = `"4200"` → **`$4,200.00`**, a silent 10× error |
+| `nanos` omitted | `420 + undefined/1e9` = NaN → **`$NaN`** |
+| `currencyCode` omitted | `Intl` **throws** |
+| whole Money absent | `$0.00` (hardcoded USD) |
+
+**Always emit `units` as a JSON number, with `nanos: 0` and `currencyCode` present.**
+
+### Zero-suppression, and the `salesTax` trap
+
+`discount` and `shipping` are suppressed when `units===0 && nanos===0`. **`subtotal`,
+`salesTax` and `total` are rendered unconditionally** — and an absent `salesTax` does not skip
+the row, it prints `$0.00`, because `DF_MEz(undefined)` returns a formatted zero.
+
+All row labels are **hardcoded en-US string literals** — `Subtotal`, `Sales tax`, `Discount`
+(with a literal `-` prefix on the amount), `Shipping`, `Total`. There is no way to relabel a
+row. **Consequence: you cannot show a cost breakdown on an insurance claim without also
+showing a "Sales tax" line.**
+
+### Absent sections draw nothing; two fields are load-bearing
+
+All four empty-state templates are the empty string, so an omitted section draws nothing.
+**But the card wrapper emits two `<div class="divider">` rules unconditionally**, so a card
+using only `productItem` shows the product row followed by two horizontal rules.
+
+Two fields are accessed **unguarded** and will throw, destroying the whole card:
+
+- `imageUri` — `DF_MXp` calls `a.startsWith(...)` on its first line. **`imageUri` is mandatory
+  whenever `productItem` is present.** The sanitiser hard-trusts the `https://www.gstatic.com`
+  prefix, so `https://www.gstatic.com/psa/static/1.gif` (a real 1×1 transparent GIF) is a
+  demo-safe asset needing no `url-allowlist` on the embed. Any other URL, with no allowlist
+  configured, is rewritten to `about:invalid#zClosurez` and fails to load.
+- `quick_actions`' `actions` — `b.actions.map(...)`, same class of failure.
+
+### `actions` labels are buttons wired to `sendQuery`
+
+```js
+else { a.clicked=!0; a.v.renderCustomText(b,!1); a.v.presenter.sendQuery(b) }
+```
+
+Any label other than the magic string `"Place order"` is, on click, **echoed into the
+transcript as the user's own message and sent to the agent as a query**. Never use an `actions`
+label decoratively — a presenter tapping one would inject it into the conversation.
+
+### `textResponseConfig: NONE` does not mean "no text"
+
+From the CES discovery document, `WidgetToolTextResponseConfig.type`:
+
+| Value | Actual meaning |
+|---|---|
+| `NONE` | **"The LLM dynamically decides whether to generate a text response alongside the widget."** |
+| `LLM_GENERATED` | "The LLM is explicitly required to generate a text response." |
+| `STATIC` | A fixed `staticText` is always used. |
+
+The name is misleading and it matters — see the open defect below.
+
+---
+
+## What was built instead (chat v7 `bb14cdcc-d723-4be1-85af-9f4451e22ed5`)
+
+Given the contract, `costBreakdown`, `paymentMethod` and `actions` were all **deliberately
+omitted**, and the card is a single `productItem` row:
+
+```json
+{"productItem": {
+  "title": "Apple MacBook Pro 16\"",
+  "subtitle": "Keyboard replacement · CLM-24806 · $420 less $25 excess = $395 to you · Approved on the spot (on-the-spot limit $1,500)",
+  "price": {"units": 420, "nanos": 0, "currencyCode": "USD"},
+  "imageUri": "https://www.gstatic.com/psa/static/1.gif"},
+ "type": "order_summary"}
+```
+
+- **`costBreakdown` dropped** because it would have printed `Sales tax $0.00` on an insurance
+  claim, and the label is unchangeable. The arithmetic moved into the subtitle instead.
+- **`actions` dropped** because its labels are live buttons. `decision` and
+  `auto_approval_cutoff` — the demo's headline beat — were **not** dropped; they moved into the
+  subtitle, which is inert.
+- Every figure is computed in Python inside `resolve_claim` from the tariff values it already
+  had. Verified on the live run: the emitted `productItem` is **byte-identical** to
+  `resolve_claim`'s `card_product_item`, and `units` arrived as an `int`. The model supplies no
+  number on this card.
+
+## `cover_offer_actions` is very likely broken the same way — UNFIXED
+
+It declares `{prompt: STRING, options: ARRAY<{label, value}>}` with **no `dataMapping`**.
+The SDK's `quick_actions` builder reads:
+
+```js
+a.quickActions=b.actions.map(function(c){
+  return{content:c.content,description:c.description,utterance:c.utterance}});
+```
+
+So the required payload is `{actions: [{content, description?, utterance?}]}` — one top-level
+key `actions`, an **array of objects**. `prompt` and `options` are read by nothing.
+
+This is a **worse** failure than the decision card's was: `b.actions` would be `undefined` and
+`.map` **throws**, rather than degrading to a raw-JSON blob.
+
+Per action: `content` is the button label, optional `description` renders as a second line (and
+switches the whole set to a grid layout), and on click the widget sends `utterance || content`.
+The widget self-dismisses on the first user input.
+
+**Unfixed and untested — it has still never fired.** Left for a follow-up.
+
+## Open defect: the decision turn draws the card but says nothing
+
+On the live chat-v7 run the agent produced **no text at all** alongside the card. The
+conversation record shows why: it put its sentence — *"Good news, I can approve that right
+now."* — into the widget tool's **`summary` parameter**, and with `textResponseConfig: NONE`
+the LLM then chose not to emit a separate text response.
+
+This contradicts `claim_intake`'s own instruction, which says *"Never send the card without a
+sentence."* It is **pre-existing** — `textResponseConfig: NONE` is unchanged since the widget
+was created — and it is not caused by the payload reshape.
+
+That instruction block is also self-contradictory and is the likely root cause: lines 159-164
+say read the `explanation` **WORD FOR WORD**, while lines 170-173 say do **not** repeat the
+figures and say only the short human part.
+
+**Suggested follow-up (not applied, needs a live test):** set
+`textResponseConfig: {type: "LLM_GENERATED", textResponseInstruction: "..."}` to *require* a
+sentence, and resolve the instruction contradiction at the same time.
 
 ## Defect found during testing — TWO FIXES ATTEMPTED, BOTH FAILED
 
@@ -192,7 +370,13 @@ widget tools survived the export→edit→import round trip, verified in the fre
 editing and again server-side after the push. Voice app `6e01e4a5` untouched, still pinned to
 v11 `b17c9a26`.
 
-**Still open on 05-02** (why this plan stays `status: incomplete`): widget rendering is still
-unverified through the real embed, and `cover_offer_actions` has still never fired. Separately,
-the contradiction path has not been re-run live against chat v6 — it needs a photo of an
-undamaged device, which the executing session did not have; it is proven offline only.
+**Still open on 05-02** (why this plan stays `status: incomplete`), as of 2026-08-09:
+
+- **The card's on-screen render is still unconfirmed by eye.** The payload now provably matches
+  the SDK contract and was verified on a live chat-v7 run, but nobody has yet watched the card
+  draw in a browser. Only a human at `http://localhost:3000` can close this.
+- **`cover_offer_actions` has still never fired**, and is now also believed defective against
+  the `quick_actions` schema — unfixed.
+- **The decision turn says nothing alongside the card** (open defect, above).
+- The **photo contradiction path** has not been re-run live since chat v6 — it needs a photo of
+  an undamaged device, which no executing session has had; proven offline only.
