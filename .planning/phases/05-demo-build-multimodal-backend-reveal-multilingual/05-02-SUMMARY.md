@@ -8,6 +8,13 @@ covers_success_criteria: []
 
 # 05-02 — Decision card + quick actions (IN PROGRESS)
 
+> ⚠ **ANY EXPORTED PACKAGE ON DISK IS STALE.** Quick task `260810-ifr` (2026-08-10) changed
+> the chat app `a2f621e4` by **direct `apps.tools.patch` / `apps.agents.patch`**, not by
+> export→edit→import. Every zip in any scratchpad predates those edits. **A future
+> export→edit→import task MUST take a fresh `exportApp` first, or it will silently revert the
+> `cover_offer_actions` schema and the `claim_intake` cross-sell instruction.** Current live
+> version: chat v8 `3f85b1d8-4810-44eb-85e6-39adc42593c9`.
+
 ## Built
 
 Two `widgetTool`s on the chat app `a2f621e4`, deployed as chat v3 `657ecb18`:
@@ -54,8 +61,8 @@ The original diagnosis in this section was wrong in an instructive way: the payl
 The SDK copied four keys off the payload, found all four undefined, and drew nothing, so the
 raw payload is what appeared on screen.
 
-- **`cover_offer_actions` has still never fired**, and now also looks defective — see
-  *"`cover_offer_actions` is very likely broken the same way"* below.
+- ~~**`cover_offer_actions` has still never fired**, and now also looks defective.~~
+  **Fixed and fired 2026-08-10** — see *"`cover_offer_actions` — FIXED AND FIRED"* below.
 
 ---
 
@@ -209,27 +216,116 @@ omitted**, and the card is a single `productItem` row:
   `resolve_claim`'s `card_product_item`, and `units` arrived as an `int`. The model supplies no
   number on this card.
 
-## `cover_offer_actions` is very likely broken the same way — UNFIXED
+## `cover_offer_actions` — FIXED AND FIRED 2026-08-10 (quick task `260810-ifr`, chat v8 `3f85b1d8`)
 
-It declares `{prompt: STRING, options: ARRAY<{label, value}>}` with **no `dataMapping`**.
-The SDK's `quick_actions` builder reads:
+**It fired for the first time ever on 2026-08-10.** Zero of the 14 conversations on record
+before that date contained a `cover_offer_actions` call.
+
+### Why it had never fired — and it was *not* a wiring defect
+
+All three prerequisites were already in place: the tool **was** attached to `claim_intake`
+(the agent every conversation reaches), `uninsured_device` **was** a declared session variable
+written by `verify_identity` before the claim is even priced, and `claim_intake`'s instruction
+**did** contain an explicit `<step name="Cross-sell">` naming the tool.
+
+**It had never fired because no conversation had ever taken a turn past the email
+confirmation on the auto-approve path.** The instruction forbids bundling the offer onto the
+email turn, so the cross-sell *structurally requires one more customer turn after the email*.
+Exactly one conversation ever got close — the user's live 2026-08-09 run — and it ended on the
+email turn (last customer message *"ok great"*, conversation closed two minutes later). Every
+other run stopped earlier: simulator scripts, an API run that hit quota, or the escalation
+path, which deliberately has no cross-sell.
+
+**Lesson worth keeping:** "the tool has never fired" was read for a week as evidence of a
+wiring defect. It was evidence of an unexercised path. The payload defect below was real but
+entirely *latent* — it would have thrown the instant it fired, and fixing it alone would have
+changed nothing observable.
+
+### The SDK `quick_actions` contract (reusable — read from source, verified)
+
+Read from the deployed bundle `chat-messenger.js` v1.16. Builder, dispatched from
+`case "quick_actions":`:
 
 ```js
-a.quickActions=b.actions.map(function(c){
-  return{content:c.content,description:c.description,utterance:c.utterance}});
+function DF_MQA(a, b) {
+  a = new DF_MKs(a.utterance.utteranceId, b.id);
+  a.quickActions = b.actions.map(function (c) {
+    return { content: c.content, description: c.description, utterance: c.utterance };
+  });
+  return a;
+}
 ```
 
-So the required payload is `{actions: [{content, description?, utterance?}]}` — one top-level
-key `actions`, an **array of objects**. `prompt` and `options` are read by nothing.
+**Payload contract: `{ actions: [ { content, description?, utterance? } ] }`**
 
-This is a **worse** failure than the decision card's was: `b.actions` would be `undefined` and
-`.map` **throws**, rather than degrading to a raw-JSON blob.
+| Field | Verified behaviour | Shipped decision |
+|---|---|---|
+| `actions` | `b.actions.map(...)` is **unguarded**. Absent ⇒ `TypeError` ⇒ `render()` never runs ⇒ **nothing appears at all**. A *harder* failure than the decision card's, which degraded to a JSON blob. | **Required** in the schema, with the reason in its description. |
+| `content` | Button label. Interpolated as a Lit template value — no unguarded deref. | **Required.** `"Add it"` / `"Not now"`. |
+| `utterance` | `e = d.utterance \|\| d.content`, then `renderCustomText(e,false)` **and** `presenter.sendQuery(e)` — echoed into the transcript **as the customer's own message** and sent to the agent as a query. | **Required, and must read like a human sentence.** A bare `"accept"` would appear as the customer typing `accept`. |
+| `description` | Guarded, so omitting is safe — **but** `.some(d => d.description)` flips the *whole set* to `grid-layout columns-1` plus a left-align style injected into each button's shadow root. | **Not even declared** — declaring it invites the model to fill it and silently change the layout. |
+| `id` | Consumed as `b.id` by the platform, not by us. | Not declared. |
+| `prompt`, `options` (the old schema) | **Read by nothing.** There is no title/prompt slot anywhere in the builder or the renderer. | **Deleted.** |
 
-Per action: `content` is the button label, optional `description` renders as a second line (and
-switches the whole set to a grid layout), and on click the widget sends `utterance || content`.
-The widget self-dismisses on the first user input.
+The widget self-dismisses on the first user input (`connectedCallback` registers a `once`
+listener on `chat-messenger-user-input-entered`).
 
-**Unfixed and untested — it has still never fired.** Left for a follow-up.
+### The three instruction defects — a correct payload alone would still have been broken
+
+1. **`end_session` was instructed in the same turn as the widget** (*"Accept a decline
+   gracefully. Then {@TOOL: end_session}"*). Obeyed literally, the session ends before the
+   customer can tap: **the buttons would have been dead even with a perfect payload.**
+2. **"the buttons ARE the question" was provably false.** The old step said *"Do not ask the
+   question in plain text as well - the buttons ARE the question"* and put the sentence in the
+   `prompt` parameter, which renders nowhere. Following it produced two naked buttons with no
+   question above them. Inverted: the agent now says the offer aloud, and the step states
+   plainly that the buttons cannot ask on its behalf.
+3. **`textResponseConfig: {type: NONE}`** means *"the LLM dynamically decides whether to
+   generate a text response"* — not "no text" — which left the offer sentence free to vanish.
+   Set to `LLM_GENERATED` **on this widget only**; the decision card's `NONE` was left alone
+   because that widget was visually verified on 2026-08-09 and is the known-good baseline.
+
+The fix added a second step, `<step name="Close after the offer">`, which owns `end_session`,
+so the close happens only after the customer has answered.
+
+### What `LLM_GENERATED` actually does to the tool's input schema
+
+Confirmed via `retrieveToolSchema`: setting `LLM_GENERATED` adds a **required `textResponse`
+string parameter** to the tool's input schema, whose description is the
+`textResponseInstruction` verbatim. That is the enforcement mechanism — the model cannot call
+the tool without composing a sentence. `textResponseInstruction` is a real field
+(`WidgetToolTextResponseConfig {type, textResponseInstruction, staticText}`).
+
+### The payload emitted on the live run
+
+Session `f9c3999f-2c0d-4908-8a1d-c22971547bb4`, chat v8, PDP100294, keyboard fault:
+
+```json
+{"type": "quick_actions",
+ "actions": [
+   {"content": "Add it",  "utterance": "Yes please, add it to my cover."},
+   {"content": "Not now", "utterance": "Not right now, thanks."}]}
+```
+
+Agent text in the **same turn**, verbatim:
+
+> *"One more thing while I have you: your Apple iPhone 16 Pro Max isn't on this policy. Would
+> you like me to add it to your cover?"*
+
+`end_session` was **not** called in that turn — it fired one turn later, after the answer.
+Sending `"Yes please, add it to my cover."` (exactly what tapping **Add it** sends) produced
+*"I'll have someone send the options over. Thanks for chatting, Jordan - have a good day."*
+plus `end_session`. No price was quoted at any point.
+
+### Open: the offer sentence is emitted twice in the record
+
+The cross-sell turn contains **two identical text chunks** — the model's own output message
+(alongside the `toolCall`) and the delivered widget message (sourced from the required
+`textResponse` parameter). The decision-card turn, on `NONE`, emits only one. Whether the
+browser renders the sentence once or twice is **not determinable from the record** and is the
+first thing to check on screen. If it does double up, the fix is to stop instructing the agent
+to say the offer as its own message and let the widget's `textResponse` be the only source —
+`LLM_GENERATED` makes that parameter mandatory, so the question cannot go missing.
 
 ## Open defect: the decision turn draws the card but says nothing
 
@@ -398,21 +494,32 @@ widget tools survived the export→edit→import round trip, verified in the fre
 editing and again server-side after the push. Voice app `6e01e4a5` untouched, still pinned to
 v11 `b17c9a26`.
 
-**Still open on 05-02** (why this plan stays `status: incomplete`), as of 2026-08-09. This
-plan is *"Decision card + quick actions"*, and while the decision card is now built, deployed
-and visually confirmed, `cover_offer_actions` — the other half of the plan's own title — has
-never fired once and is known defective against the `quick_actions` contract, so the plan
-cannot be complete. The silent decision turn is a second, lesser reason. Exactly one of the
-plan's four open items closed on 2026-08-09:
+**Still open on 05-02** (why this plan stays `status: incomplete`), as of 2026-08-10. This
+plan is *"Decision card + quick actions"*. The decision card is built, deployed and
+**visually confirmed**. `cover_offer_actions` — the other half of the plan's own title — is
+now built, deployed and **fires with a contract-shaped payload**, but only its *payload* is
+proven; **nobody has yet watched the buttons draw in a browser**, and the plan does not flip
+to `complete` on a headless-only result. Two of the plan's four original items are closed:
 
 - ~~**The card's on-screen render is still unconfirmed by eye.** The payload now provably
   matches the SDK contract and was verified on a live chat-v7 run, but nobody has yet watched
   the card draw in a browser. Only a human at `http://localhost:3000` can close this.~~
   **CLOSED 2026-08-09** (quick task 260809-nt7) — see *"Rendering — CONFIRMED BY EYE
   2026-08-09"* above.
-- **`cover_offer_actions` has still never fired**, and is now also believed defective against
-  the `quick_actions` schema — unfixed.
-- **The decision turn says nothing alongside the card** (open defect, above).
+- ~~**`cover_offer_actions` has still never fired**, and is now also believed defective against
+  the `quick_actions` schema — unfixed.~~ **RESOLVED WITH A CAVEAT 2026-08-10** (quick task
+  `260810-ifr`, chat v8 `3f85b1d8`). It was defective, it is fixed, and it has now fired on a
+  live conversation with a contract-shaped payload, a spoken offer naming the device, and no
+  same-turn `end_session`. **Caveat — this is what keeps the plan incomplete:** the buttons'
+  on-screen render is **not yet confirmed by eye**, and the record shows the offer sentence
+  emitted **twice**, which may or may not double up in the browser. Only a human at
+  `http://localhost:3000` can close both.
+- **The decision turn says nothing alongside the card** — still open, and now known to be
+  *non-deterministic* rather than always-silent: on the 2026-08-10 v8 run the agent *did* say
+  *"I've looked into that, and I can approve this claim right now."* alongside the card, with
+  `textResponseConfig` still `NONE` and the instruction contradiction still unresolved. That
+  is consistent with `NONE` meaning "the LLM decides each time", and makes the beat unreliable
+  rather than reliably broken — a presenter still cannot depend on it.
 - The **photo CONFIRM path is now verified live** (2026-08-09, quick task 260809-nt7, chat v7
   `bb14cdcc`). The **photo CONTRADICTION path** remains not verified live — it needs a photo
   of an undamaged device through the widget, which no executing session has had; proven

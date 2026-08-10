@@ -114,7 +114,7 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `bb14cdcc-d723-4be1-85af-9f4451e22ed5` — *chat v7, decision card renders* |
+| Version live | `3f85b1d8-4810-44eb-85e6-39adc42593c9` — *chat v8, cross-sell buttons fixed* (supersedes v7 `bb14cdcc`, which is still the version the on-screen card was verified against — the card is byte-identical in v8) |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -137,7 +137,8 @@ photo of an **undamaged** laptop.
 | *(attach the cracked-screen photo)* | Describe what it can see, then approve |
 | *(the decision card draws)* | See below |
 | *"Okay that works"* | Confirm the email |
-| *"No thanks"* | Close |
+| *"That's everything, thanks"* | **Offer to add the uninsured iPhone 16 Pro Max to cover, with two buttons** — the cross-sell beat |
+| *(tap **Add it** or **Not now**)* | Say it will send the options over — or accept the decline — then close warmly |
 
 **The moment to point at:** it says back what it actually sees — *"I can see the crack
 running from the lower left across the panel"* — before any decision. That line is the proof
@@ -159,14 +160,48 @@ no cost breakdown, payment method or buttons are sent, deliberately, because the
 otherwise print an unchangeable "Sales tax $0.00" line and live buttons that inject text into
 the conversation when tapped.
 
-**Presenter warning: the agent will most likely say nothing alongside the card.** The
-decision and the reason are in the card's small subtitle only, so **read the card out loud**
-("$840 to fix, $25 excess, $815 to you, approved on the spot because it's under the $1,500
-limit") rather than waiting for the agent to say it. This is a known open issue, not a fault
-of the run.
+**Presenter warning: the agent may say nothing alongside the card.** The decision and the
+reason are always in the card's small subtitle, but whether the agent *also* says them out
+loud is not guaranteed — the card's `textResponseConfig` is `NONE`, which means the model
+decides each time. It said nothing on the 2026-08-09 run and it *did* say *"I've looked into
+that, and I can approve this claim right now"* on the 2026-08-10 v8 run. **Be ready to read
+the card out loud** ("$840 to fix, $25 excess, $815 to you, approved on the spot because it's
+under the $1,500 limit") rather than depending on the agent to say it. Known open issue, not
+a fault of the run.
 
 Terse input works: the verified run used just *"PDP100294, Jordan Rivera"* and *"cracked. no
 water but it still works"*.
+
+## The cross-sell beat — *cost centre → profit centre*
+
+> ⚠ **Payload verified headlessly on 2026-08-10 (chat v8); the on-screen render is not yet
+> confirmed by eye** — the same status Scenario D carries. The tool now fires reliably and
+> emits the exact shape the widget SDK reads, but nobody has yet watched the buttons draw in
+> a browser.
+
+**This beat is new and had never once fired before 2026-08-10.** It was not miswired — no
+conversation had ever taken a turn *past* the email confirmation, which is structurally what
+the offer requires. Give it that turn and it fires.
+
+After the email is confirmed, say **"that's everything, thanks"**. The agent should say one
+sentence naming the device that is *not* on the policy — *"One more thing while I have you:
+your Apple iPhone 16 Pro Max isn't on this policy. Would you like me to add it to your
+cover?"* — followed by **two buttons in a row: `Add it` and `Not now`**.
+
+**Presenter notes:**
+
+- **Tapping a button types a sentence into the chat as if the customer had written it** —
+  `Add it` sends *"Yes please, add it to my cover."* and `Not now` sends *"Not right now,
+  thanks."* That is the SDK's behaviour, not a bug, and it looks natural on screen. You can
+  also just type the answer instead of tapping.
+- **The agent will never quote a price or a premium** — it does not have one and is
+  instructed not to invent one. It says it will have someone send the options over. If a
+  customer asks "how much?", that is the honest answer, not a dodge.
+- **There is deliberately no cross-sell on the escalation path** (Scenario D). Never sell to
+  someone whose claim has just gone to a specialist. If you want to show the discipline, run
+  Scenario D and point out that the offer *doesn't* come.
+- The conversation ends **after** the customer answers, not before — so the buttons stay
+  live long enough to tap.
 
 ## Scenario D — the photo disagrees  *(the strongest beat)*
 
