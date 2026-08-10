@@ -114,7 +114,7 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `3f85b1d8-4810-44eb-85e6-39adc42593c9` — *chat v8, cross-sell buttons fixed* (supersedes v7 `bb14cdcc`, which is still the version the on-screen card was verified against — the card is byte-identical in v8) |
+| Version live | `160dc3b2-571c-480f-b901-e4dbe8947f70` — *chat v9, the agent speaks the decision explanation verbatim* (supersedes v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v8 and v9**) |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -160,14 +160,28 @@ no cost breakdown, payment method or buttons are sent, deliberately, because the
 otherwise print an unchangeable "Sales tax $0.00" line and live buttons that inject text into
 the conversation when tapped.
 
-**Presenter warning: the agent may say nothing alongside the card.** The decision and the
-reason are always in the card's small subtitle, but whether the agent *also* says them out
-loud is not guaranteed — the card's `textResponseConfig` is `NONE`, which means the model
-decides each time. It said nothing on the 2026-08-09 run and it *did* say *"I've looked into
-that, and I can approve this claim right now"* on the 2026-08-10 v8 run. **Be ready to read
-the card out loud** ("$840 to fix, $25 excess, $815 to you, approved on the spot because it's
-under the $1,500 limit") rather than depending on the agent to say it. Known open issue, not
-a fault of the run.
+**The agent now states the decision out loud — you no longer read the card for it.** Fixed in
+chat v9 `160dc3b2` (2026-08-10). At the moment of approval it says the rule explanation in
+full, naming the amount, the on-the-spot limit it is under, and why it qualifies:
+
+> *"Good news - that screen replacement comes to $840, which is under the $1,500 I can approve
+> on the spot, so I can approve that for you right now. Your excess is $25, and your reference
+> is CLM-24xxx."*
+
+**Point at where those figures come from.** That sentence is not written by the model — it is
+copied from the pricing tool's own output by a platform field mapping, so the agent
+*physically cannot* round it, reword it or invent a number. That is worth saying aloud if
+anyone asks how you stop an LLM quoting the wrong price.
+
+**The card repeats the same facts in its subtitle. That overlap is deliberate** — the spoken
+line carries the beat, the card reinforces it and leaves it on screen. It is not a bug and not
+a duplicate.
+
+> Verified on a live run (keyboard fault, 2026-08-10): the explanation was byte-identical to
+> the pricing tool's string and appeared exactly once in the conversation record. **The
+> on-screen render of that line has not yet been watched in a browser** — if you see the same
+> sentence printed twice, once above the card and once attached to it, report it; the fix is
+> known and small.
 
 Terse input works: the verified run used just *"PDP100294, Jordan Rivera"* and *"cracked. no
 water but it still works"*.
@@ -355,8 +369,10 @@ what the phone number serves — you must cut a new version and repoint the depl
   It self-corrects; it just sits quiet a beat longer.
 - **Chat:** the decision card shows an empty grey image tile and two trailing divider rules
   with nothing after them. Expected — see the "Expected, not a bug" note under Scenario C.
-- **Chat:** the silent decision turn — the agent draws the card without a sentence stating
-  the decision. Read the card aloud; see the presenter warning under Scenario C.
+- ~~**Chat:** the silent decision turn — the agent draws the card without a sentence stating
+  the decision.~~ **Fixed in chat v9 `160dc3b2` (2026-08-10).** The agent now speaks the rule
+  explanation verbatim from the pricing tool. See Scenario C. One thing left to watch for on
+  screen: the sentence printing *twice*, once above the card and once attached to it.
 
 ---
 

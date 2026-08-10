@@ -8,12 +8,15 @@ covers_success_criteria: []
 
 # 05-02 — Decision card + quick actions (IN PROGRESS)
 
-> ⚠ **ANY EXPORTED PACKAGE ON DISK IS STALE.** Quick task `260810-ifr` (2026-08-10) changed
-> the chat app `a2f621e4` by **direct `apps.tools.patch` / `apps.agents.patch`**, not by
-> export→edit→import. Every zip in any scratchpad predates those edits. **A future
+> ⚠ **ANY EXPORTED PACKAGE ON DISK IS STALE.** Quick tasks `260810-ifr` and `260810-k5x`
+> (both 2026-08-10) changed the chat app `a2f621e4` by **direct `apps.tools.patch` /
+> `apps.agents.patch`**, not by export→edit→import. Every zip in any scratchpad predates those
+> edits — including `chat-fresh-k5x.zip`, which was taken *before* the k5x patches. **A future
 > export→edit→import task MUST take a fresh `exportApp` first, or it will silently revert the
-> `cover_offer_actions` schema and the `claim_intake` cross-sell instruction.** Current live
-> version: chat v8 `3f85b1d8-4810-44eb-85e6-39adc42593c9`.
+> `cover_offer_actions` schema, the `claim_decision_card` `textResponseConfig`/`dataMapping`,
+> and the `claim_intake` cross-sell *and* decision-announcement instructions.** Current live
+> version: **chat v9 `160dc3b2-571c-480f-b901-e4dbe8947f70`** (supersedes v8
+> `3f85b1d8-4810-44eb-85e6-39adc42593c9`), served by deployment `d7bfbb93`.
 
 ## Built
 
@@ -327,24 +330,60 @@ first thing to check on screen. If it does double up, the fix is to stop instruc
 to say the offer as its own message and let the widget's `textResponse` be the only source —
 `LLM_GENERATED` makes that parameter mandatory, so the question cannot go missing.
 
-## Open defect: the decision turn draws the card but says nothing
+## RESOLVED 2026-08-10 — the decision turn now SPEAKS the rule explanation (quick task `260810-k5x`, chat v9 `160dc3b2`)
 
-On the live chat-v7 run the agent produced **no text at all** alongside the card. The
-conversation record shows why: it put its sentence — *"Good news, I can approve that right
-now."* — into the widget tool's **`summary` parameter**, and with `textResponseConfig: NONE`
-the LLM then chose not to emit a separate text response.
+**The former defect.** On the chat-v7 run the agent produced no text at all alongside the
+card; on the chat-v8 run it produced a figure-free paraphrase (*"I've looked into that, and I
+can approve this claim right now"*). Two causes, both now fixed:
 
-This contradicts `claim_intake`'s own instruction, which says *"Never send the card without a
-sentence."* It is **pre-existing** — `textResponseConfig: NONE` is unchanged since the widget
-was created — and it is not caused by the payload reshape.
+1. `claim_decision_card` had `textResponseConfig: {type: NONE}`, which per the CES discovery
+   document means *"the LLM dynamically decides whether to generate a text response"* — not
+   "no text". The model routed its sentence into the `summary` parameter, which renders
+   nowhere, and was free to stay silent.
+2. `claim_intake`'s decision-announcement block was **self-contradictory**: it said read the
+   `explanation` **WORD FOR WORD**, then said do *not* repeat the figures and *"say the short
+   human part only"*.
 
-That instruction block is also self-contradictory and is the likely root cause: lines 159-164
-say read the `explanation` **WORD FOR WORD**, while lines 170-173 say do **not** repeat the
-figures and say only the short human part.
+**What shipped.**
 
-**Suggested follow-up (not applied, needs a live test):** set
-`textResponseConfig: {type: "LLM_GENERATED", textResponseInstruction: "..."}` to *require* a
-sentence, and resolve the instruction contradiction at the same time.
+| Change | Detail |
+|---|---|
+| `claim_decision_card.textResponseConfig` | `NONE` → `LLM_GENERATED` with a `textResponseInstruction` pinning it to a word-for-word reproduction of `resolve_claim`'s `explanation` |
+| `claim_decision_card.dataMapping.fieldMappings` | added `"textResponse": "explanation"` alongside the existing `"productItem": "card_product_item"` (mode `FIELD_MAPPING`). **The API ACCEPTED it** — this is the deterministic path, so the string is copied by the platform, not composed by the model |
+| `claim_intake` instruction | the contradiction resolved **in favour of verbatim**; the *"say the short human part only"* / *"do NOT repeat them in your own message"* / *"never send the figures twice"* clauses **deleted**; a greppable sentinel added: `THE CARD TEXT RESPONSE IS THE ONLY PLACE YOU SAY THE DECISION - do not also send a message of your own in this turn, or the customer hears it twice.` Length 18,310 → 18,496 chars (+186), exactly one contiguous region changed |
+
+**Proven live** on session `dda81738-832f-455d-bc91-42f7abb3e308`, run against the **draft
+app** before any repoint (the API accepts a `runSession` with no `config.deployment`, so the
+demo rig was never exposed to an unverified build). Keyboard fault, PDP100294, 3 turns, no
+quota error, **no screen-path drift** — the precise fault description recommended by
+`260810-ifr` worked first time.
+
+- **The spoken line, verbatim:** *"Good news - that keyboard replacement comes to $420, which
+  is under the $1,500 I can approve on the spot, so I can approve that for you right now. Your
+  excess is $25, and your reference is CLM-24005."*
+- **Byte-identical to `resolve_claim`'s `explanation`** — not a paraphrase, not a degraded
+  pass. No figure originates with the model.
+- **Duplication count: exactly 1.** The decision turn contains two text chunks total — the
+  customer's own message, and one widget-delivered chunk carrying the explanation. **The model
+  emitted no text chunk of its own**, which is precisely what the sentinel instructs. The
+  `260810-ifr` doubling trap did **not** reproduce.
+- The `summary` parameter was still filled (*"Your claim is approved. The keyboard replacement
+  costs $420, minus your $25 excess, leaving $395 for you. The reference is CLM-24005."*) and
+  still renders nowhere. Harmless, recorded for completeness.
+
+**Regression canaries all held on the same run:** the emitted `productItem` is byte-identical
+to `resolve_claim`'s `card_product_item`, `price.units` is a JSON **int** `420`, `nanos` 0,
+`USD`, gstatic `imageUri`, subtitle unchanged in shape; `cover_offer_actions`'s `widgetTool`
+byte-identical; deterministic tariff $420 / $25 excess / $1,500 cutoff; `send_claim_email`
+fired in **exactly one** turn; 8 tools and 37 `variableDeclarations` throughout.
+
+**Deployment `d7bfbb93` was repointed to chat v9 `160dc3b2` and read back** (not inferred),
+with `channelType` `WEB_UI` and `webWidgetConfig` byte-unchanged. The repoint was *conditional*
+on the duplication count being exactly 1, so a doubled decision line could not have reached
+the rig.
+
+**Still needs eyes:** whether the spoken line renders once on screen. The record proves one
+chunk server-side, but only a browser settles what the widget draws.
 
 ## Defect found during testing — TWO FIXES ATTEMPTED, BOTH FAILED
 
@@ -514,12 +553,13 @@ to `complete` on a headless-only result. Two of the plan's four original items a
   on-screen render is **not yet confirmed by eye**, and the record shows the offer sentence
   emitted **twice**, which may or may not double up in the browser. Only a human at
   `http://localhost:3000` can close both.
-- **The decision turn says nothing alongside the card** — still open, and now known to be
-  *non-deterministic* rather than always-silent: on the 2026-08-10 v8 run the agent *did* say
-  *"I've looked into that, and I can approve this claim right now."* alongside the card, with
-  `textResponseConfig` still `NONE` and the instruction contradiction still unresolved. That
-  is consistent with `NONE` meaning "the LLM decides each time", and makes the beat unreliable
-  rather than reliably broken — a presenter still cannot depend on it.
+- ~~**The decision turn says nothing alongside the card** — non-deterministic rather than
+  always-silent.~~ **FIXED 2026-08-10** (quick task `260810-k5x`, chat v9 `160dc3b2`, now
+  served by `d7bfbb93`) — see *"RESOLVED 2026-08-10 — the decision turn now SPEAKS the rule
+  explanation"* above. The explanation is spoken **byte-identically** to `resolve_claim`'s own
+  string and appears **exactly once** in the record. **Caveat that keeps this plan
+  `incomplete`:** the on-screen render of that line is not yet confirmed by eye — specifically
+  whether it draws once or doubles above the card.
 - The **photo CONFIRM path is now verified live** (2026-08-09, quick task 260809-nt7, chat v7
   `bb14cdcc`). The **photo CONTRADICTION path** remains not verified live — it needs a photo
   of an undamaged device through the widget, which no executing session has had; proven
