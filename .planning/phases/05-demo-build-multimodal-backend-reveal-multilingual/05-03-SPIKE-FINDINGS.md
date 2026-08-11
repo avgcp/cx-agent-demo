@@ -9,7 +9,7 @@ Three answers downstream plans read by name. Headings below are literal and grep
 |---|---|---|
 | `## LANGUAGE_SWITCH_VERDICT` | 05-08, 05-09 | `LOCKS_AT_FIRST_UTTERANCE` |
 | `## VOICE_BASELINE` | 05-05, 05-07, 05-10 | `draft_equals_v11: true` |
-| `## PACKET_RECIPIENT` | 05-04, 05-05, 05-07 | `verify-domain` (DOMAIN_VERIFICATION) — user decision; **addresses PENDING**, blocking external dependency |
+| `## PACKET_RECIPIENT` | 05-04, 05-05, 05-07 | `same-mailbox` — user decision 2026-08-11, supersedes `verify-domain`. Both emails → `akash.vinayak@nerdery.com`, assessor packet prefixed `[ASSESSOR]`. `from` stays `onboarding@resend.dev`. **No external blocker.** |
 | `## RICH_CONTENT_SPANISH` | 05-08 | **UNRESOLVED** — not answerable within this plan's budget |
 
 **Deployments did not move.** Chat `d7bfbb93` still serves v9 `160dc3b2`; voice `d28bbcb0`
@@ -195,37 +195,65 @@ mutate).
 
 ## PACKET_RECIPIENT
 
-**DECIDED BY THE USER, 2026-08-10: `verify-domain` (DOMAIN_VERIFICATION).**
+> **⚠ SUPERSEDED 2026-08-11.** The `verify-domain` decision recorded on 2026-08-10 was
+> reversed by the user the following day. The current, binding decision is `same-mailbox`
+> below. The superseded reasoning is retained further down for the record.
 
-The user declined the same-mailbox / differentiated-subject-line compromise. The assessor
-briefing packet is intended to reach a **genuinely different recipient** than the customer
-confirmation, and domain verification is the accepted cost of that.
+**DECIDED BY THE USER, 2026-08-11: `same-mailbox`.**
+
+Both the customer confirmation and the assessor briefing packet are delivered to
+`akash.vinayak@nerdery.com` — the Resend account-owning mailbox, and therefore the one
+address the shared `onboarding@resend.dev` sender is permitted to reach. They are told apart
+by a subject-line prefix.
 
 ```
-selected_option_id: verify-domain
-decision: DOMAIN_VERIFICATION
+selected_option_id: same-mailbox
+decision: SAME_MAILBOX
 decided_by: user
-decided_on: 2026-08-10
-distinct_recipient_available: YES (once the domain is verified)
-recipient_address:  PENDING — supplied at execution time, after domain verification
-from_address:       PENDING — moves off onboarding@resend.dev to the verified domain
-subject_prefix_customer_email:  PENDING
-subject_prefix_assessor_packet: PENDING
+decided_on: 2026-08-11
+supersedes: verify-domain (2026-08-10)
+distinct_recipient_available: NO — one mailbox, two subject prefixes
+recipient_address:  akash.vinayak@nerdery.com
+from_address:       onboarding@resend.dev   # UNCHANGED — do not touch
+subject_prefix_assessor_packet: "[ASSESSOR]"
+subject_prefix_customer_email:  ""          # unchanged from today's live behaviour
+blocking_external_dependency: NONE
 ```
 
-**How 05-04 / 05-05 / 05-07 must read this:** a distinct assessor recipient **IS** available
-by decision — build for two genuinely different mailboxes, not for the one-mailbox
-compromise. But the **concrete addresses are supplied at execution time**, not hardcoded from
-this document. Do not invent an address, and do not fall back to the `one-mailbox` values
-sketched further down (they are retained only as the rejected option's costing).
+**How 05-04 / 05-05 / 05-07 must read this:**
 
-### ⚠ Blocking external dependency
+1. **Build for one mailbox, two subject prefixes.** Do not build a second-recipient routing
+   path and do not treat the addresses as PENDING — they are concrete above.
+2. **Do NOT modify `send_claim_email`'s `from` address.** It stays `onboarding@resend.dev`.
+   This is the single biggest win of the reversal: the customer-confirmation path remains
+   exactly as verified (single-send, delivered), so nothing already proven has to be
+   re-proven. Treat `send_claim_email` as byte-identical/untouched, as 05-04 and 05-05
+   already assert.
+3. **There is no external blocker.** The previous "blocking external dependency" on Resend
+   domain verification and DNS propagation is GONE. Live delivery of the assessor packet can
+   be verified in the same run that builds it.
+4. **Say it honestly in the runbook.** Both emails land in one inbox. A presenter must not
+   claim true separate routing. Criterion 3 asks for the packet to be *"delivered as a real
+   message so the artifacts are demonstrable without a bespoke reveal screen"* — a real email
+   in a real inbox satisfies that; the "different person" framing is narrative.
+5. **Path to production:** verifying a domain at resend.com lifts the single-mailbox
+   restriction and enables genuine separate routing. Record it in the spec as the production
+   step, not as demo scope.
 
-**Nothing in 05-04 / 05-05 / 05-07 that actually delivers to a second mailbox can be verified
-live until the domain is verified in the Resend dashboard and DNS has propagated.** That step
-requires Resend dashboard access and DNS record changes only the user can make; this executor
-did not and cannot perform it. Plan for the build to land ahead of the verification and for
-the live delivery check to be gated behind it.
+### ~~⚠ Blocking external dependency~~ — NO LONGER APPLIES
+
+~~Nothing in 05-04 / 05-05 / 05-07 that actually delivers to a second mailbox can be verified
+live until the domain is verified in the Resend dashboard and DNS has propagated.~~
+Superseded by the `same-mailbox` decision above — there is no external dependency, and the
+live delivery check is no longer gated.
+
+### Superseded reasoning (2026-08-10, retained for the record)
+
+The user initially declined the same-mailbox compromise, wanting the packet to reach a
+genuinely different recipient, and accepted domain verification as the cost. That was
+reversed on 2026-08-11 in favour of using the account-owning mailbox directly, on the
+grounds that it works immediately, requires no DNS work, and avoids changing the `from`
+address on an email path that is already verified.
 
 ### What changes once the domain is verified
 
