@@ -27,9 +27,11 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | **v11** `b17c9a26-3485-4658-9259-dfa4839a7977` |
+| Version live | **v13** `5d9df25c-3771-45bb-bd20-b28978cc5955` — *the assessor briefing packet on the phone channel* |
+| Roll back to | **v11** `b17c9a26-3485-4658-9259-dfa4839a7977` — the build the phone served up to 2026-08-12. See *If something goes wrong (phone)*. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
+| Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
 
 > **Confirm the version before you present.** A deployment pins a *version*, so the phone
 > number serves whatever it was last pointed at:
@@ -38,8 +40,12 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `b17c9a26…`. Anything else and the email may go elsewhere — see the version table
+> Expect `5d9df25c…`. Anything else and the email may go elsewhere — see the version table
 > at the bottom.
+>
+> ⚠ **NOT YET CONFIRMED BY EAR.** v13 was proven end to end over the API — packet composed,
+> Resend HTTP 200, nothing about it spoken — but **nobody has made a phone call on it.**
+> See *The briefing packet on the phone* under Scenario B for the one check that closes this.
 >
 > **Only one mailbox can receive.** The sender is Resend's shared `onboarding@resend.dev`,
 > which on a free account delivers **only to the address that owns the Resend account**.
@@ -86,6 +92,53 @@ path; the agent will not try to sell to someone whose claim just went to a speci
 
 Run A then B back-to-back. The contrast between the two is the point.
 
+### The briefing packet on the phone — *the backend claims-processing reveal*
+
+**New in voice v13 `5d9df25c` (2026-08-12).** Same beat the chat channel has had since v10,
+now on the call.
+
+On the escalation path *and nowhere else*, the moment the agent tells the caller the email
+is on its way, it silently composes a six-section **assessor briefing packet** from the
+session and sends it as a **second, separate email**. The caller hears **nothing** about it —
+no packet, no case record, no assessor, no second email.
+
+| Email | Subject | Who it's for |
+|---|---|---|
+| Customer confirmation | `Claim CLM-24xxx - please reply with photos` | Jordan Rivera |
+| **Briefing packet** | **`[ASSESSOR] [VOICE] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
+
+Both land in `akash.vinayak@nerdery.com` — see the one-mailbox note at the top. The
+**`[VOICE]` token is how you tell a phone packet from a chat one** (`[ASSESSOR] [CHAT] …`)
+when you have run both channels into the same inbox.
+
+The packet reads:
+
+```
+SUMMARY: ... Apple MacBook Pro 16" which is liquid damaged and does not turn on.
+ACTION: Assess the claim details ... to determine the outcome.
+CLAIM: Customer: Jordan Rivera; Policy: PDP100294; Device: Apple MacBook Pro 16";
+       Issue: liquid_damage; Amount: $3,000; Excess: $25; Total-loss flag: true.
+DIAGNOSTIC: Customer reported: q1=no_power.
+RULES FIRED: DL-3; DL-2.
+FLAGS: Total loss indicated.
+```
+
+**Open it on screen while the call is still fresh.** This is the "what happens behind the
+scenes" answer, and it is stronger on the phone than in chat: the caller said four sentences
+and a structured case file already exists.
+
+> **Two things to watch on the call, and roll back if either is wrong.**
+> 1. **Listen for a pause after the send-away line.** The packet costs about **6 extra
+>    seconds** of tool work on that turn (measured: 3.3 s on v11, 9.5 s on v13, same script,
+>    same channel). The agent is *instructed to say the whole send-away sentence before it
+>    calls any tool*, and the API record confirms the text comes first — so the work should
+>    run while you are still being spoken to. A second of quiet before the call closes is
+>    fine; several seconds of dead air is not.
+> 2. **Listen for a leak.** It must not say "packet", "case record", "assessor", or read any
+>    heading aloud. Nothing leaked on the API runs, but audio is its own channel.
+>
+> Either one goes wrong → roll back to v11 `b17c9a26`, one call, below.
+
 ---
 
 ## Optional beat — "actually it's my phone"
@@ -114,8 +167,8 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` — *chat v12, the packet filed on the email-confirmation turn* (supersedes v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v12**) |
-| Roll back to | `658472a0-05be-4a28-9d9f-9774ebe0dd05` — chat v10, the packet on the turn *after* the email. See *If something goes wrong (chat)* below. |
+| Version live | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` — *chat v13, packet currency as whole dollars and a `[CHAT]` subject token* (supersedes v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v13**) |
+| Roll back to | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` — chat v12, identical behaviour except the packet's raw-float money and the missing channel token. See *If something goes wrong (chat)* below. |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -255,13 +308,15 @@ it, is never told about it, and hears nothing different.
 | | Subject | Who it is for |
 |---|---|---|
 | Customer confirmation | `Claim CLM-24xxx - please reply with photos` | the customer |
-| **Briefing packet** | **`[ASSESSOR] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
+| **Briefing packet** | **`[ASSESSOR] [CHAT] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
 
 Both arrive at **`akash.vinayak@nerdery.com`**. That is a demo constraint, not the design —
 Resend's shared `onboarding@resend.dev` sender only delivers to the account-owning mailbox.
 **Say so honestly if asked:** in production these route to two different people; verifying a
 domain at resend.com/domains is the one step that unlocks it. The `[ASSESSOR]` prefix is what
-makes them unmistakable side by side on one screen.
+makes them unmistakable side by side on one screen, and the **`[CHAT]` token separates this
+packet from the phone channel's `[ASSESSOR] [VOICE] …`** when both have been run into the
+same inbox.
 
 **What is in the packet** — six headings, every value pulled from the conversation, nothing
 invented:
@@ -271,24 +326,22 @@ SUMMARY:     Review liquid damage claim for Jordan Rivera's Apple MacBook Pro 16
              which has no power following water contact.
 ACTION:      Review claim details, rules fired, and photo evidence when received
              to make a final determination.
-CLAIM:       Customer: Jordan Rivera; Policy: PDP100294; Device: Apple MacBook Pro 16";
-             Issue: liquid_damage; Amount: 3000.0; Excess: 25.0; Total-loss flag: true.
-DIAGNOSTIC:  Customer reported no power and water contact.
-RULES FIRED: DL-3 (Total loss reported), DL-2 (Liquid damage reported).
-FLAGS:       none.
+CLAIM:       Customer Jordan Rivera, Policy PDP100294, Device Apple MacBook Pro 16",
+             Issue liquid damage, Claim amount $3,000, Excess $25, Total loss true.
+DIAGNOSTIC:  The customer reports the device has no power.
+RULES FIRED: DL-3, DL-2.
+FLAGS:       none
 ```
 
-> **⚠ Two cosmetic defects in the packet body, known and not yet fixed (plan 05-07 owns both).**
-> Do not put the packet on a projector without reading these first.
+> **✅ Both packet-presentation defects are fixed as of chat v13 `1eb3fd5c` (2026-08-12).**
+> Recorded because the old wording appears in earlier summaries.
 >
-> 1. **Money renders as a raw float.** `Amount: 3000.0; Excess: 25.0` — no `$`, no thousands
->    separator. It should read `$3,000` and `$25`. If a customer is looking at the packet on
->    screen, say the figures aloud rather than pointing at them.
-> 2. **The subject carries no channel token.** `[ASSESSOR] CLM-24xxx - Jordan Rivera` is
->    identical in shape whether the claim came from chat or from the phone, so once voice ships
->    its packet the two are indistinguishable in the shared mailbox — which is exactly what the
->    same-mailbox decision needs them not to be. The voice tool already composes
->    `[ASSESSOR] [PHONE] …`; **chat has no matching marker.**
+> 1. **Money used to render as a raw float** — `Amount: 3000.0; Excess: 25.0`, no `$`, no
+>    thousands separator. It now reads **`$3,000`** and **`$25`**. Safe to put on a projector.
+> 2. **The subject used to carry no channel token** — `[ASSESSOR] CLM-24xxx - …` was identical
+>    in shape whether the claim came from chat or from the phone. Both channels now stamp
+>    themselves: **`[ASSESSOR] [CHAT] …`** and **`[ASSESSOR] [VOICE] …`**. The `[ASSESSOR]`
+>    prefix is unchanged, so any mailbox filter on it still works.
 
 **✅ Nothing extra to do — corrected in chat v12 `26c3aebd` (2026-08-12).** The packet is filed
 on the **same turn as the email confirmation**, silently, together with the handoff to the
@@ -345,6 +398,9 @@ record is already sent. **You do not need to send another message.**
 - It writes in short structured messages rather than one-thing-per-turn speech.
 - It will show the email address on file; on the phone it never reads one out.
 - The escalation and cross-sell beats behave the same.
+- **The briefing packet fires on both channels now** (voice v13 `5d9df25c` / chat v13
+  `1eb3fd5c`), on the escalation path only, with identical six sections. The only difference
+  is the subject token — `[ASSESSOR] [VOICE]` vs `[ASSESSOR] [CHAT]`.
 - **The photo gate only applies to screen repairs.** A liquid total loss escalates
   immediately, exactly as on the phone — no photo needed.
 
@@ -407,9 +463,16 @@ curl -X PATCH \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments/d28bbcb0-066e-4127-a894-fbf9ba39789f?updateMask=appVersion"
 ```
 
+**The named rollback is v11 `b17c9a26-3485-4658-9259-dfa4839a7977`** — the build the phone
+served from 2026-08-05 to 2026-08-12. Rolling back costs the briefing packet on the phone and
+nothing else: the decision line, the tariff, the customer email, the cross-sell and barge-in are
+unchanged between v11 and v13. Substitute it for `<VERSION_ID>` above.
+
 | Version | ID | Notes |
 |---|---|---|
-| **v11** | `b17c9a26-3485-4658-9259-dfa4839a7977` | **Current.** No self-narration |
+| **v13** | `5d9df25c-3771-45bb-bd20-b28978cc5955` | **Current.** Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
+| v12 | `9227210b-e46b-41bd-af7d-59db48abb3a6` | **Never deployed. Do not roll onto it.** Cut mid-plan; its packet mailer throws on every send (unsupported `timeout` argument) so no assessor email is ever delivered |
+| **v11** | `b17c9a26-3485-4658-9259-dfa4839a7977` | **Roll back to this.** No self-narration; no packet |
 | v10 | `6ec881a1-081f-4859-8edb-4329d801c3d8` | Liquid-ingress disambiguation |
 | v9 | `ff095eeb-95a9-42f1-987d-8f2ed61d9304` | Device framing + mismatch cross-sell |
 | v7 | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | Previous good build, assumes the covered device |
@@ -422,8 +485,8 @@ curl -X PATCH \
 | v2 | `c3ede5f3-dd3e-475c-b658-3fd660e2c384` | |
 | v1 | `a49ca4f7-6e6a-4bfd-90df-f9e90596056c` | Earliest |
 
-**Stay on v11.** If it misbehaves, drop to **v10**, then **v9** — same conversation quality, emails you,
-only difference is the email is composed at a slightly later step.
+**Stay on v13.** If it misbehaves, drop to **v11**, then **v10**, then **v9** — same conversation
+quality, emails you, only difference is the email is composed at a slightly later step.
 
 The two unnumbered versions above were cut during a parallel edit and point the claim email
 at a different mailbox. Don't roll onto them by accident.
@@ -439,15 +502,15 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
-**Roll back the chat deployment to v10 `658472a0`** — the last build before the packet moved
-onto the email-confirmation turn. It still files the packet, but only if you send one more
-message after the email line. One call:
+**Roll back the chat deployment to v12 `26c3aebd`** — identical behaviour to what is live,
+except the packet's money prints as `3000.0` / `25.0` and the subject carries no `[CHAT]`
+token. One call:
 
 ```bash
 curl -X PATCH \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "Content-Type: application/json" \
-  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/658472a0-05be-4a28-9d9f-9774ebe0dd05"}' \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/26c3aebd-d72b-4ec5-861d-8a9fabb140cf"}' \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
 ```
 
@@ -455,9 +518,10 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v12** | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | **Current.** Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close now actually fire |
+| **v13** | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | **Current.** Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
+| **v12** | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | **Roll back to this.** Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close actually fire |
 | v11 | `838b6d2b-1e9f-44f8-b319-941c3e4ea10b` | **Never deployed. Do not roll onto it.** Cut mid-task; files the packet on the right turn but the agent says *nothing* to the customer on that turn |
-| v10 | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | **Roll back to this.** Assessor briefing packet, but on the turn *after* the email — needs one extra customer message or nothing is filed |
+| v10 | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | Assessor briefing packet, but on the turn *after* the email — needs one extra customer message or nothing is filed |
 | v9 | `160dc3b2-571c-480f-b901-e4dbe8947f70` | Spoken decision explanation, no packet |
 | v8 | `3f85b1d8-4810-44eb-85e6-39adc42593c9` | Cross-sell buttons; decision turn may say nothing |
 | v7 | `bb14cdcc-d723-4be1-85af-9f4451e22ed5` | Decision card fixed; no working cross-sell |
@@ -484,6 +548,7 @@ the cross-sell, the tariff and the customer email are byte-identical in v9 and v
 
 **Revoke the Resend API key.** It's in the `send_claim_email` / `resolve_claim` /
 **`send_case_record_email`** tool source and baked into every version snapshot from v4 onward
-(and, for `send_case_record_email`, from chat v10 `658472a0` onward), readable by anyone with
-read access to the project. Delete it in the Resend dashboard once you're done — one key
-revocation covers all three tools, since they share the same key.
+(for `send_case_record_email`, from chat v10 `658472a0` and from **voice v12 `9227210b` /
+v13 `5d9df25c`** onward), readable by anyone with read access to the project. Delete it in the
+Resend dashboard once you're done — one key revocation covers **both apps and all three tools**,
+since voice and chat each hold their own copy of the same key.
