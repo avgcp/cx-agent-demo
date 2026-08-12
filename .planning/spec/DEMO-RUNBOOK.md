@@ -114,8 +114,8 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `658472a0-05be-4a28-9d9f-9774ebe0dd05` — *chat v10, the assessor briefing packet* (supersedes v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7, v8, v9 and v10**) |
-| Roll back to | `160dc3b2-571c-480f-b901-e4dbe8947f70` — chat v9, the last build before the packet. See *If something goes wrong (chat)* below. |
+| Version live | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` — *chat v12, the packet filed on the email-confirmation turn* (supersedes v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v12**) |
+| Roll back to | `658472a0-05be-4a28-9d9f-9774ebe0dd05` — chat v10, the packet on the turn *after* the email. See *If something goes wrong (chat)* below. |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -244,7 +244,8 @@ than any slide, because the audience watched it happen.
 
 ### The briefing packet — *the backend claims-processing reveal*
 
-**New in chat v10 `658472a0` (2026-08-11).** Every escalated chat claim now writes a
+**New in chat v10 `658472a0` (2026-08-11), made reliable in v12 `26c3aebd` (2026-08-12).**
+Every escalated chat claim now writes a
 six-section **assessor briefing packet** and sends it as a **second, separate email** — the
 specialist's handover, composed from the session's own recorded facts. The customer never sees
 it, is never told about it, and hears nothing different.
@@ -277,11 +278,29 @@ RULES FIRED: DL-3 (Total loss reported), DL-2 (Liquid damage reported).
 FLAGS:       none.
 ```
 
-**⚠ Give it one more turn.** The packet is filed on the turn **after** the email confirmation,
-silently, together with the handoff to the specialist. If you stop typing the moment the email
-line appears, the conversation is left mid-escalation and no packet is sent. **Say one more
-thing — "thanks, that's everything" is enough** — and the agent files the case and closes. You
-will see no new message from it; that silence is the point.
+> **⚠ Two cosmetic defects in the packet body, known and not yet fixed (plan 05-07 owns both).**
+> Do not put the packet on a projector without reading these first.
+>
+> 1. **Money renders as a raw float.** `Amount: 3000.0; Excess: 25.0` — no `$`, no thousands
+>    separator. It should read `$3,000` and `$25`. If a customer is looking at the packet on
+>    screen, say the figures aloud rather than pointing at them.
+> 2. **The subject carries no channel token.** `[ASSESSOR] CLM-24xxx - Jordan Rivera` is
+>    identical in shape whether the claim came from chat or from the phone, so once voice ships
+>    its packet the two are indistinguishable in the shared mailbox — which is exactly what the
+>    same-mailbox decision needs them not to be. The voice tool already composes
+>    `[ASSESSOR] [PHONE] …`; **chat has no matching marker.**
+
+**✅ Nothing extra to do — corrected in chat v12 `26c3aebd` (2026-08-12).** The packet is filed
+on the **same turn as the email confirmation**, silently, together with the handoff to the
+specialist and the close. Say *"okay, thanks"*, read the email line, and you are done: the case
+record is already sent. **You do not need to send another message.**
+
+> **Superseded, and worth knowing why.** Chat v10 filed the packet on the turn *after* the email
+> confirmation, so the runbook used to tell presenters to type one more thing. That was fragile
+> and it failed in the wild: a real conversation on v10 escalated correctly and filed **no packet
+> at all**, because the customer said *"ok"*, got the send-away line, and stopped — the natural
+> end of the conversation. The turn the packet needed never came, and nothing on screen said
+> anything was wrong. v12 moves the filing onto the turn that always happens.
 
 **Presenter notes:**
 
@@ -420,14 +439,15 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
-**Roll back the chat deployment to v9 `160dc3b2`** — the last build before the briefing
-packet. One call:
+**Roll back the chat deployment to v10 `658472a0`** — the last build before the packet moved
+onto the email-confirmation turn. It still files the packet, but only if you send one more
+message after the email line. One call:
 
 ```bash
 curl -X PATCH \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "Content-Type: application/json" \
-  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/160dc3b2-571c-480f-b901-e4dbe8947f70"}' \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/658472a0-05be-4a28-9d9f-9774ebe0dd05"}' \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
 ```
 
@@ -435,8 +455,10 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v10** | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | **Current.** Assessor briefing packet on the escalated path |
-| v9 | `160dc3b2-571c-480f-b901-e4dbe8947f70` | **Roll back to this.** Spoken decision explanation, no packet |
+| **v12** | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | **Current.** Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close now actually fire |
+| v11 | `838b6d2b-1e9f-44f8-b319-941c3e4ea10b` | **Never deployed. Do not roll onto it.** Cut mid-task; files the packet on the right turn but the agent says *nothing* to the customer on that turn |
+| v10 | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | **Roll back to this.** Assessor briefing packet, but on the turn *after* the email — needs one extra customer message or nothing is filed |
+| v9 | `160dc3b2-571c-480f-b901-e4dbe8947f70` | Spoken decision explanation, no packet |
 | v8 | `3f85b1d8-4810-44eb-85e6-39adc42593c9` | Cross-sell buttons; decision turn may say nothing |
 | v7 | `bb14cdcc-d723-4be1-85af-9f4451e22ed5` | Decision card fixed; no working cross-sell |
 
