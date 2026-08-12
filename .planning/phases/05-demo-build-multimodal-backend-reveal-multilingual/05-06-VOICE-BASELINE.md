@@ -21,7 +21,7 @@ literal and greppable — **do not rename them.** 05-07 (assessor packet on voic
 | `## DECISION_SPEECH_EN` | `spoken_equals_explanation: **true**` — voice relays the tool's string byte-for-byte, in one chunk. **Holds on TEXT/API only** — see the 2026-08-11 audio-normalisation note in that section |
 | `## AUTO_APPROVE_PATH` | tariff `840 / 25 / 1500` PASS, one `send_claim_email`, ~~cross-sell did NOT fire ❌~~ → **CORRECTED 2026-08-11: cross-sell FIRES ✅** (`103r6XO3ZXjS3S97D-AtLK1ag`); the negative was a false negative |
 | `## ESCALATION_PATH` | `escalation_source: reused cae670d7-a6f1-491d-b782-921a53af6128` |
-| `## PHONE_CHECK` | **DONE 2026-08-12, CORRECTED 2026-08-11** — decision line PASS, single-send PASS, barge-in **PASS**, **cross-sell FIRES ✅**, repeated diagnostic question **intermittent, not systematic** |
+| `## PHONE_CHECK` | **DONE 2026-08-11, CORRECTED 2026-08-11** — decision line PASS, single-send PASS, barge-in **PASS**, **cross-sell FIRES ✅**, repeated diagnostic question **intermittent, not systematic** |
 
 > **Two rows in this table were corrected after the evidence came in.** Task 1 wrote the table
 > ahead of Task 2 with the plan's *expectations* in it. Both were wrong, in opposite directions:
@@ -481,7 +481,7 @@ the same offer prose firing on a different trigger.
 (1) from (2): the caller is told to say `"That's everything, thanks"` first and *wait*, before
 saying `"No thanks"`.
 
-> **UPDATE 2026-08-12 — explanation (1) is now substantially weaker.** The real GTP call recorded
+> **UPDATE 2026-08-11 — explanation (1) is now substantially weaker.** The real GTP call recorded
 > in `## PHONE_CHECK` reproduced `cross_sell_fired: false` on a **live audio call**, where the
 > agent *can* volunteer a turn and where the customer's reply after the email confirmation was a
 > neutral `"Okay."` — the natural opening for the offer — with `uninsured_device` populated
@@ -648,12 +648,12 @@ The specialist will need a few photos of the damage, so I've sent an email to th
 ## PHONE_CHECK
 
 ```
-phone_check: DONE 2026-08-12 - PASS decision line | PASS single-send email |
+phone_check: DONE 2026-08-11 - PASS decision line | PASS single-send email |
              FAIL repeated diagnostic question | cross-sell did NOT fire (2nd observation) |
              Spanish did not switch (suggestive) | call length 2m12s
 ```
 
-**The call happened.** A real inbound call was placed to the GTP number on `2026-08-12`. Unlike
+**The call happened.** A real inbound call was placed to the GTP number on `2026-08-11`. Unlike
 every other capture in this file, this one is **not** a `runSession` against the draft — it is the
 live phone leg, and the conversation record proves it:
 
@@ -774,7 +774,7 @@ just been given, it re-interrogated the customer —
 the agent look like it was not listening, immediately before the moment it is meant to look
 brilliant.
 
-**Fixed in the DRAFT on 2026-08-12 (quick task `260811-suy`), not yet in any version.** The fix is
+**Fixed in the DRAFT on 2026-08-11 (quick task `260811-suy`), not yet in any version.** The fix is
 in the recovery path, not the guard: on `DIAGNOSTIC_INCOMPLETE` the agent is now instructed to call
 `run_diagnostic` immediately, carrying every answer it already has, and never to re-ask a question
 the caller has already answered in order to recover. `claim_intake` 14,140 → **14,647** chars

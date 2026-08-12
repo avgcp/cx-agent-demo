@@ -131,7 +131,7 @@ inbox check for exactly one `CLM-24464` email as the only thing that closes it.
   with the content-aware recovery finding) and **new item 9** (possible double email) added.
 
 **2. `05-06-SUMMARY.md`** — the one-liner now carries a correction note, and **BLOCKER 1 is
-withdrawn** via a ⛔ block appended after the 2026-08-12 hedge. Includes the runbook-accuracy
+withdrawn** via a ⛔ block appended after the 2026-08-11 hedge. Includes the runbook-accuracy
 correction that the offer arrives inside the send-away turn, not as one of "three separate turns".
 
 **3. `260811-suy-SUMMARY.md`** — a ⛔ PARTIALLY SUPERSEDED block at the top. **Its history is

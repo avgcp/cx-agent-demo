@@ -9,7 +9,7 @@ provides:
   - "05-06-VOICE-BASELINE.md ## DECISION_SPEECH_EN — the byte-pinned English decision string 05-09 must localise"
   - "05-06-VOICE-BASELINE.md ## AUTO_APPROVE_PATH — tariff, single-send email mechanic, cross-sell gap"
   - "05-06-VOICE-BASELINE.md ## VOICE_INVENTORY / ## GTP_SURFACE — the pre-edit surface later voice plans assert against"
-  - "05-06-VOICE-BASELINE.md ## PHONE_CHECK — EXECUTED 2026-08-12 (quick task 260811-suy); results recorded in the section"
+  - "05-06-VOICE-BASELINE.md ## PHONE_CHECK — EXECUTED 2026-08-11 (quick task 260811-suy); results recorded in the section"
 affects:
   - "05-07 (assessor packet on voice) — must not double-send the customer email"
   - "05-09 (Spanish on voice) — has a deterministic English source string to mirror"
@@ -132,7 +132,7 @@ Under (1) the fix is one line of the runbook; under (2) it is a later voice plan
 is scripted to distinguish them** — the caller says *"That's everything, thanks"* and waits 10
 seconds before *"No thanks"*.
 
-> **UPDATE 2026-08-12 (quick task `260811-suy`) — explanation (1) is now substantially weaker.**
+> **UPDATE 2026-08-11 (quick task `260811-suy`) — explanation (1) is now substantially weaker.**
 > The phone check happened (conversation `081cCNZtVwgSGqmfMpFSpbxMQ`, `channelType: AUDIO`,
 > `source: LIVE`, deployment `d28bbcb0` on v11 `b17c9a26`) and **reproduced
 > `cross_sell_fired: false` on a live audio call** — the setting explanation (1) said the API test
@@ -149,7 +149,7 @@ seconds before *"No thanks"*.
 
 > ### ⛔ BLOCKER 1 WITHDRAWN 2026-08-11 (quick task `260811-tgm`) — THE CROSS-SELL FIRES
 >
-> **This blocker is not real.** Everything above it in BLOCKER 1, including the 2026-08-12 update,
+> **This blocker is not real.** Everything above it in BLOCKER 1, including the 2026-08-11 update,
 > is superseded. It is retained verbatim so the reversal is auditable rather than silently
 > rewritten. `cross_sell_fired: **true**`.
 >
