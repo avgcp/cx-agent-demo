@@ -114,7 +114,8 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `160dc3b2-571c-480f-b901-e4dbe8947f70` — *chat v9, the agent speaks the decision explanation verbatim* (supersedes v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v8 and v9**) |
+| Version live | `658472a0-05be-4a28-9d9f-9774ebe0dd05` — *chat v10, the assessor briefing packet* (supersedes v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7, v8, v9 and v10**) |
+| Roll back to | `160dc3b2-571c-480f-b901-e4dbe8947f70` — chat v9, the last build before the packet. See *If something goes wrong (chat)* below. |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -241,6 +242,62 @@ No price is quoted, because nothing was verified. Behind it, `photo_contradictio
 This is the answer to *"what stops someone just claiming anything?"* — and it lands better
 than any slide, because the audience watched it happen.
 
+### The briefing packet — *the backend claims-processing reveal*
+
+**New in chat v10 `658472a0` (2026-08-11).** Every escalated chat claim now writes a
+six-section **assessor briefing packet** and sends it as a **second, separate email** — the
+specialist's handover, composed from the session's own recorded facts. The customer never sees
+it, is never told about it, and hears nothing different.
+
+**Two emails land for one escalated claim, and they are told apart by the subject line:**
+
+| | Subject | Who it is for |
+|---|---|---|
+| Customer confirmation | `Claim CLM-24xxx - please reply with photos` | the customer |
+| **Briefing packet** | **`[ASSESSOR] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
+
+Both arrive at **`akash.vinayak@nerdery.com`**. That is a demo constraint, not the design —
+Resend's shared `onboarding@resend.dev` sender only delivers to the account-owning mailbox.
+**Say so honestly if asked:** in production these route to two different people; verifying a
+domain at resend.com/domains is the one step that unlocks it. The `[ASSESSOR]` prefix is what
+makes them unmistakable side by side on one screen.
+
+**What is in the packet** — six headings, every value pulled from the conversation, nothing
+invented:
+
+```
+SUMMARY:     Review liquid damage claim for Jordan Rivera's Apple MacBook Pro 16"
+             which has no power following water contact.
+ACTION:      Review claim details, rules fired, and photo evidence when received
+             to make a final determination.
+CLAIM:       Customer: Jordan Rivera; Policy: PDP100294; Device: Apple MacBook Pro 16";
+             Issue: liquid_damage; Amount: 3000.0; Excess: 25.0; Total-loss flag: true.
+DIAGNOSTIC:  Customer reported no power and water contact.
+RULES FIRED: DL-3 (Total loss reported), DL-2 (Liquid damage reported).
+FLAGS:       none.
+```
+
+**⚠ Give it one more turn.** The packet is filed on the turn **after** the email confirmation,
+silently, together with the handoff to the specialist. If you stop typing the moment the email
+line appears, the conversation is left mid-escalation and no packet is sent. **Say one more
+thing — "thanks, that's everything" is enough** — and the agent files the case and closes. You
+will see no new message from it; that silence is the point.
+
+**Presenter notes:**
+
+- **It fires on every escalated chat claim**, not only the photo-disagreement one. The fastest
+  way to show it is the liquid total loss — *"I spilled a full glass of water on my MacBook and
+  now it won't turn on at all"* — which escalates in two turns and needs no photo.
+- **Point at `RULES FIRED`.** `DL-3` and `DL-2` are the same rule IDs the decision engine
+  computed; the packet did not re-derive them. That is the audit trail the "how do you govern
+  this?" question is really asking about.
+- **Nothing in the packet is written by the model from scratch** — it is composed from eleven
+  recorded session variables. If a value is missing it says so; it does not guess.
+- Verified server-side on 2026-08-11 (session `esc-25e925f8`, `CLM-24413`): the packet was
+  composed once, handed to the mailer byte-for-byte unaltered, and Resend returned **HTTP 200**.
+  **The inbox arrival has not yet been confirmed by eye** — check the mailbox once before you
+  present.
+
 **Other photo cases**, if someone asks:
 - A blurry or badly framed photo gets **one** retry, with a specific reason, then a human.
 
@@ -361,6 +418,31 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ---
 
+## If something goes wrong  *(chat)*
+
+**Roll back the chat deployment to v9 `160dc3b2`** — the last build before the briefing
+packet. One call:
+
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/160dc3b2-571c-480f-b901-e4dbe8947f70"}' \
+  "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
+```
+
+Then **reload `http://localhost:3000`** so the widget picks the version up.
+
+| Version | ID | Notes |
+|---|---|---|
+| **v10** | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | **Current.** Assessor briefing packet on the escalated path |
+| v9 | `160dc3b2-571c-480f-b901-e4dbe8947f70` | **Roll back to this.** Spoken decision explanation, no packet |
+| v8 | `3f85b1d8-4810-44eb-85e6-39adc42593c9` | Cross-sell buttons; decision turn may say nothing |
+| v7 | `bb14cdcc-d723-4be1-85af-9f4451e22ed5` | Decision card fixed; no working cross-sell |
+
+Rolling back to v9 costs you the packet beat and nothing else — the card, the spoken decision,
+the cross-sell, the tariff and the customer email are byte-identical in v9 and v10.
+
 ## Known cosmetic issues
 
 - An 👂 emoji occasionally appears in transcripts when the caller pauses mid-sentence.
@@ -378,6 +460,8 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## After the demo
 
-**Revoke the Resend API key.** It's in the `send_claim_email` / `resolve_claim` tool source
-and baked into every version snapshot from v4 onward, readable by anyone with read access
-to the project. Delete it in the Resend dashboard once you're done.
+**Revoke the Resend API key.** It's in the `send_claim_email` / `resolve_claim` /
+**`send_case_record_email`** tool source and baked into every version snapshot from v4 onward
+(and, for `send_case_record_email`, from chat v10 `658472a0` onward), readable by anyone with
+read access to the project. Delete it in the Resend dashboard once you're done — one key
+revocation covers all three tools, since they share the same key.
