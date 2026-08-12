@@ -21,7 +21,7 @@ literal and greppable — **do not rename them.** 05-07 (assessor packet on voic
 | `## DECISION_SPEECH_EN` | `spoken_equals_explanation: **true**` — voice relays the tool's string byte-for-byte, in one chunk |
 | `## AUTO_APPROVE_PATH` | tariff `840 / 25 / 1500` PASS, one `send_claim_email`, **cross-sell did NOT fire** ❌ |
 | `## ESCALATION_PATH` | `escalation_source: reused cae670d7-a6f1-491d-b782-921a53af6128` |
-| `## PHONE_CHECK` | `phone_check: PENDING` — human task, see the section |
+| `## PHONE_CHECK` | **DONE 2026-08-12** — decision line PASS, single-send PASS, **repeated diagnostic question FAIL**, cross-sell did not fire (2nd observation) |
 
 > **Two rows in this table were corrected after the evidence came in.** Task 1 wrote the table
 > ahead of Task 2 with the plan's *expectations* in it. Both were wrong, in opposite directions:
@@ -442,6 +442,16 @@ the same offer prose firing on a different trigger.
 (1) from (2): the caller is told to say `"That's everything, thanks"` first and *wait*, before
 saying `"No thanks"`.
 
+> **UPDATE 2026-08-12 — explanation (1) is now substantially weaker.** The real GTP call recorded
+> in `## PHONE_CHECK` reproduced `cross_sell_fired: false` on a **live audio call**, where the
+> agent *can* volunteer a turn and where the customer's reply after the email confirmation was a
+> neutral `"Okay."` — the natural opening for the offer — with `uninsured_device` populated
+> (`HP Pavilion 15`). No offer came. That is **two independent observations**, one of them
+> immune to explanation (1)'s "a text `runSession` cannot volunteer a turn" argument.
+> **Not yet proven**, because the caller did not run the exact scripted beat
+> (`"That's everything, thanks"` + 10 s of silence). Current status: **probable genuine gap
+> (explanation 2), two observations, one scripted retest still outstanding.**
+
 ### Session shape
 
 | Field | Value |
@@ -561,97 +571,210 @@ The specialist will need a few photos of the damage, so I've sent an email to th
 ## PHONE_CHECK
 
 ```
-phone_check: PENDING
+phone_check: DONE 2026-08-12 - PASS decision line | PASS single-send email |
+             FAIL repeated diagnostic question | cross-sell did NOT fire (2nd observation) |
+             Spanish did not switch (suggestive) | call length 2m12s
 ```
 
-**Human task — an agent cannot place a phone call.** Tasks 1 and 2 proved over the API that the
-draft matches what the phone serves, that the tariff is right, that the email fires once, and
-exactly what the agent says at the decision moment. What the API *cannot* prove is the telephony
-leg: that the number answers, that speech recognition hears a spoken policy ID, that barge-in and
-pacing feel right, that the email actually lands, and **whether the cross-sell beat exists at all**
-(see `## AUTO_APPROVE_PATH` — this call is the tie-breaker).
+**The call happened.** A real inbound call was placed to the GTP number on `2026-08-12`. Unlike
+every other capture in this file, this one is **not** a `runSession` against the draft — it is the
+live phone leg, and the conversation record proves it:
 
-Nothing downstream is blocked on this. 05-07 and 05-09 can proceed against the API evidence above;
-this section stays `PENDING` until the call happens, then gets `phone_check: pass` or
-`phone_check: fail` written into the fence at the top.
+| Field (from the conversation resource) | Value |
+|---|---|
+| conversation | `081cCNZtVwgSGqmfMpFSpbxMQ` |
+| `channelType` | **`AUDIO`** |
+| `source` | **`LIVE`** |
+| `inputTypes` | `["INPUT_TYPE_VARIABLES", "INPUT_TYPE_AUDIO"]` |
+| `deployment` | **`d28bbcb0-066e-4127-a894-fbf9ba39789f`** |
+| `appVersion` | **`b17c9a26-3485-4658-9259-dfa4839a7977`** (v11) |
+| `startTime` → `endTime` | `2026-08-12T01:37:41.859Z` → `2026-08-12T01:39:54.102Z` |
+| `turnCount` | **9** |
+| `languageCode` | `en-US` |
+| policy used | **`PDP100583`** — Apple iPhone 16 Pro Max, `coverage_limit` 1500, `auto_approval_cutoff` **750**, `deductible` 25 |
+
+**Note the policy is not the one the script called for.** The script says
+`Jordan Rivera / PDP100294` (MacBook, cutoff $1,500). The caller used **PDP100583** (iPhone, cutoff
+**$750**), so every figure below is re-priced against that policy and is **not** directly comparable
+to `## DECISION_SPEECH_EN`'s `$840 / $1,500`. This turns out to be *more* informative, not less —
+see item 1.
+
+Tool sequence, by turn: `verify_identity` (T1) → `run_diagnostic` (T2, T3, T4) → **`resolve_claim`
+(T5 — rejected)** → `run_diagnostic` (T6) → `resolve_claim` (T6) → `send_claim_email` (T7) →
+`end_session` (T8).
 
 ---
 
-### 0. Get the number (2 minutes, console only)
+### 1. PASS — the decision line, correctly re-priced
 
-It is **not retrievable via the API**. CX Agent Studio console → project
-`insurance-agent-demo-500614` (location `us`) → app **Meridian Claim - Voice (demo-ready)**
-(`6e01e4a5-42a8-5213-b3da-c9053ff8ea52`) → deployment `d28bbcb0-066e-4127-a894-fbf9ba39789f`
-(*voice - meridian demo*) → the integration / telephony panel.
+Spoken at turn 6, one agent chunk:
 
-While you are there, **write the number into `DEMO-RUNBOOK.md`** — the `☎ ____` line under
-*Phone channel → Call this number* (around line 20). It has been blank since the runbook was
-written.
+> Good news - that screen replacement comes to 420 dollars, which is under the 750 dollars I can
+> approve on the spot, so I can approve that for you right now. Your excess is 25 dollars, and your
+> reference is CLM 24552.
 
-Before dialling, confirm the deployment still says **v11 `b17c9a26…`**. It did as of
-`2026-08-11T21:05Z`.
+`resolve_claim`'s own `explanation` on the same turn:
 
-### 1. What to say — say it out loud, do not type
+```
+Good news - that screen replacement comes to $420, which is under the $750 I can approve on the spot, so I can approve that for you right now. Your excess is $25, and your reference is CLM-24552.
+```
 
-Four beats. **The third one is deliberately different from the runbook**, to give the cross-sell a
-chance to appear:
+**Same template as `## DECISION_SPEECH_EN`, byte-for-byte, with only the four policy-dependent
+figures changed** — `$420` for `$840`, `$750` for `$1,500`, `$25` unchanged, and the run's own
+`CLM-`. `toolResponse` corroborates every one: `decision AUTO_APPROVE`, `claim_amount 420`,
+`deductible 25`, `auto_approval_cutoff 750`, `coverage_limit 1500`, `rules_fired ["DL-1"]`,
+`total_loss_flag false`, `claim_ref CLM-24552`.
 
-| # | Say | Then |
+**This is a stronger result than the baseline could give.** The baseline proved the sentence is
+relayed verbatim for *one* policy; this call proves the template **re-prices correctly off a
+different policy's tariff** and still relays verbatim. The model contributed none of the numbers.
+
+**TTS normalisation is expected, not a defect.** `$420` was voiced as *"420 dollars"* and
+`CLM-24552` as *"CLM 24552"*. The transcript records the *spoken* form; the tool string is
+unchanged. Any future assertion must compare against `toolResponse.explanation`, **not** against
+the transcript, or it will fail spuriously on the currency and hyphen forms.
+
+### 2. PASS — single-send email, now confirmed live
+
+`resolve_claim` (T6) returned `email_queued: true` and `email_delivery` was set to `live`.
+`send_claim_email` (T7) then returned:
+
+```
+"Email already sent when the claim was decided. Customer should reply with photos attached."
+```
+
+with `sent: true`, `delivery: "live"`, `claim_ref CLM-24552`, and `send_claim_email` appearing in
+**exactly one turn**. **This confirms on a real phone call what 05-04 established from historical
+records and what `## AUTO_APPROVE_PATH` / `## ESCALATION_PATH` established over `runSession`:** the
+customer email is sent by `resolve_claim`; `send_claim_email` only reports on it. The single-send
+mechanic is not an artifact of API-driven turns.
+
+> The mailbox itself (question 7 of the original script — how many mails actually landed at
+> `akash.vinayak@nerdery.com`) was **not reported back**. The record proves one send *call* and one
+> `delivery: "live"`; it cannot prove one *delivery*. That check remains open.
+
+### 3. FAIL — the agent re-asked a question the customer had already answered
+
+**This is the phone check's one failure.** At turn 4 the agent asked *"Aside from the crack, does it
+still switch on and respond normally?"*. At turn 5 the customer answered **"It does."** — and the
+agent then called **`resolve_claim`** instead of `run_diagnostic`, guessing `diagnostic_outcome:
+"REPAIRABLE"` on its own.
+
+`resolve_claim` refused it, correctly:
+
+```
+{"error": "DIAGNOSTIC_INCOMPLETE",
+ "message": "The diagnostic has not reached a terminal outcome yet. Keep calling run_diagnostic until it returns one."}
+```
+
+**The guard did its job — it is working hardening and must not be weakened.** The defect is
+entirely in what the agent did *next*: rather than calling `run_diagnostic` with the answer it had
+just been given, it re-interrogated the customer —
+
+> *"Sorry, I just need to be sure—apart from the crack, does it still turn on and work as it
+> should?"*
+
+— to which the (audibly resigned) reply was *"Ah it does work as it should"*. Only then did
+`run_diagnostic` run with `q3=works_normally`, return `terminal REPAIRABLE`, and the claim resolve.
+
+**Cost:** one wasted customer turn and ~11 s of a 132 s call — about 8% of the demo, spent making
+the agent look like it was not listening, immediately before the moment it is meant to look
+brilliant.
+
+**Fixed in the DRAFT on 2026-08-12 (quick task `260811-suy`), not yet in any version.** The fix is
+in the recovery path, not the guard: on `DIAGNOSTIC_INCOMPLETE` the agent is now instructed to call
+`run_diagnostic` immediately, carrying every answer it already has, and never to re-ask a question
+the caller has already answered in order to recover. `claim_intake` 14,140 → **14,647** chars
+(+507), one contiguous region. **The live phone number still exhibits this defect** until a version
+is cut and `d28bbcb0` is repointed — see `260811-suy-SUMMARY.md`.
+
+### 4. Cross-sell did NOT fire — second independent observation
+
+```
+cross_sell_fired: false   (2nd independent observation; 1st was ## AUTO_APPROVE_PATH)
+```
+
+- `uninsured_device` **was populated** — `HP Pavilion 15`, written by `verify_identity` at turn 1.
+- The claim **auto-approved**, so DL-4's stated precondition was met.
+- The customer's reply after the email confirmation was a neutral **"Okay."** — the natural
+  opening, and *not* the refusal (`"No thanks"`) that explanation (1) blamed last time.
+- Regex over every agent chunk for
+  `iphone | 16 pro | uninsured | add it to your cover | also insure | another device | bundle | pavilion`
+  returned exactly **one** hit, and it is the intake line *"I've got your Apple iPhone 16 Pro Max
+  here, what's happened to it?"* — the **covered** device, not an offer.
+
+**This materially weakens explanation (1)** in `## AUTO_APPROVE_PATH`. That explanation rested on
+the claim that a text `runSession` cannot let the agent volunteer an unprompted turn. This was a
+live audio call, where it can, with a neutral customer turn to hang the offer off — and no offer
+came.
+
+**It is not yet proven, and must not be written up as a proven defect.** The caller did not run the
+exact scripted beat: they said *"Okay."*, not *"That's everything, thanks"*, and did not hold ~10 s
+of silence afterwards. **Status: probable genuine gap (explanation 2) — two independent
+observations, one scripted retest still outstanding.** The retest is unchanged and still worth 3
+minutes: reach the email-confirmation turn, say *"That's everything, thanks"*, then **say nothing
+for 10 seconds**.
+
+### 5. Spanish — did not switch (suggestive, not conclusive)
+
+At turn 8 the customer said **"¿Qué?"**. The agent replied in English —
+*"Thanks for calling, &lt;name&gt; - have a good day."* — and called `end_session`.
+`Conversation.languageCode` stayed **`en-US`** for the whole call.
+
+Consistent with `LOCKS_AT_FIRST_UTTERANCE`, **but weak evidence**, and it should not be cited as
+confirmation:
+
+- the input was two syllables, likely at the edge of what language ID can act on;
+- it arrived **during the close sequence**, after the claim was resolved, where the agent is
+  instructed to wrap up — a language switch may simply have been out-competed by the close;
+- `end_session` fired in the same turn, so there was no subsequent turn in which a switch could
+  have shown itself.
+
+**05-09 must not treat this as a settled negative.** A real Spanish test needs a full Spanish
+sentence, early, mid-claim.
+
+### 6. Call length — 2m12s
+
+`132.2 s` wall clock (`01:37:41.859Z` → `01:39:54.102Z`), 9 turns. **A useful demo-timing data
+point:** the whole auto-approve story — greet, authenticate, hand off, three diagnostic questions,
+price, approve, email, close — fits in **about two minutes**, *including* the ~11 s wasted by the
+item-3 defect. Per-turn span durations (these include the caller's own speaking time, so they are an
+upper bound on dead air, not a measure of it): T1 25.5 s (authentication), T2 9.6 s, T3 6.9 s,
+T4 6.8 s, T5 7.8 s (the wasted re-ask), **T6 12.3 s (the decision turn — two tool calls)**,
+T7 11.9 s, T8 5.6 s.
+
+The decision turn is the longest agent-side beat and is the one a presenter should be ready to talk
+over. Nothing approached the ">8 s of dead air is new" threshold once caller speech is discounted.
+
+### 7. The email asks the customer to reply with photos — and the runbook does not say so
+
+`send_claim_email`'s result carries subject **`Claim CLM-24552 - please reply with photos`** and a
+body that instructs, in capitals, *"Please REPLY TO THIS EMAIL attaching clear photos of the
+damage - ideally one showing the whole device and one close-up of the damaged area"*, then
+*"allow 3-7 business days"*. The agent voiced the same thing at turn 7.
+
+**This is the voice channel compensating for having no photo-upload path** — chat takes the photo
+in-session and assesses it live; voice defers it to email. It is a genuinely good answer to the
+obvious *"but how do you see the damage over the phone?"* question a customer will ask in the room.
+
+**It is not in `DEMO-RUNBOOK.md`, and it should be.** Two lines are enough: (a) tell the presenter
+this beat exists so they can land it deliberately rather than have it arrive as a surprise, and
+(b) flag the contrast with chat's live photo assessment, which is the natural segue between the two
+channels. Filed as a runbook gap, not an agent defect.
+
+---
+
+### Not answered by this call — still open
+
+The original script asked eight things. The conversation record can only answer what it contains;
+these four were **not reported back** and remain unverified:
+
+| # | Open item | Why the record cannot settle it |
 |---|---|---|
-| 1 | *"Hi, my name is Jordan Rivera and my policy is P D P one zero zero two nine four"* | let it verify and hand you over |
-| 2 | *"I dropped my laptop and the screen is cracked. No liquid, and it still switches on and works normally otherwise."* | **let the pause happen** — this is the decision turn |
-| 3 | *"Okay that works for me"* | it should confirm the email |
-| 4 | **_"That's everything, thanks"_** ← **not** *"No thanks"* | **now WAIT at least 10 seconds in silence.** This is the whole point of the call. If an offer to add the iPhone 16 Pro Max comes, it comes here. |
-| 5 | only *after* waiting: *"No thanks"* | it should close |
+| 1 | **The phone number**, and the `☎ ____` blank in `DEMO-RUNBOOK.md` | not API-retrievable; `telephony-caller-id` in the record is the *caller*, and is redacted |
+| 4 | **Barge-in** — does talking over it interrupt? | requires a deliberate interruption; the transcript shows none was attempted |
+| 6 | **The close** — were the literal `"` quote marks voiced? | this call closed on *"Thanks for calling, &lt;name&gt; - have a good day."*, which carries **no** quote marks — a **different sentence** from the `"Understood. Have a good day."` recorded in `## DECISION_SPEECH_EN`. BLOCKER 2 is therefore **untested**, not cleared |
+| 7 | **The mailbox** — how many mails actually landed | the record proves one send call, not one delivery |
 
-If the offer arrives *unprompted* between beats 3 and 4 without you saying anything, note that
-too — it means the agent volunteers turns on a live call in a way the API test cannot reproduce.
-
-### 2. The decision sentence you are listening for
-
-At beat 2 the agent should say this, essentially word for word (only the `CLM-` number changes):
-
-> *"Good news - that screen replacement comes to **$840**, which is under the **$1,500** I can
-> approve on the spot, so I can approve that for you right now. Your excess is **$25**, and your
-> reference is **CLM-24868**."*
-
-The API proved this string is relayed **verbatim from the pricing tool, in one chunk** — so on the
-phone it should be a single fluent sentence, not a paraphrase and not said twice. If you hear it
-reworded, or hear the numbers twice, that is a regression worth reporting.
-
-### 3. Report these eight things
-
-Please answer each one explicitly — they are transcribed straight into this section.
-
-1. **The number you dialled**, and did it answer?
-2. **The decision sentence as you heard it**, as close to word-for-word as you can manage. Were the
-   three figures exactly **$840 / $1,500 / $25**? Any figure that differed?
-3. **Cross-sell** — did it offer to add the uninsured **iPhone 16 Pro Max**? At which beat? Did it
-   come unprompted, or only after *"That's everything, thanks"*, or not at all?
-4. **Barge-in** — talk over it deliberately once, mid-sentence, during a long turn. Did it stop and
-   listen, or talk through you? (App has `bargeInAwareness: true` and no `customize_response`
-   override, so platform default applies.)
-5. **Longest silence**, roughly, in seconds. The decision turn is known to take ~4 s. **Past ~8 s of
-   dead air is new** and worth reporting.
-6. **The close** — after *"No thanks"*, did it end cleanly, or hang / loop / drop mid-sentence? The
-   API shows it calls `end_session` with the line `"Understood. Have a good day."` — **listen for
-   whether the literal quotation marks get voiced or clip the delivery** (recorded cosmetic defect,
-   see `## DECISION_SPEECH_EN`).
-7. **The mailbox** — open `akash.vinayak@nerdery.com`. How many claim confirmation emails arrived
-   **from this call**? Expected **exactly one**, subject `Claim CLM-24xxx - please reply with
-   photos`. Report the integer and the claim reference on it, and whether that reference matches
-   what you heard at beat 2.
-8. **Anything else that felt off** — 👂 emoji artifacts, mishearing of the spoken policy ID,
-   the agent reading out an email address (it should never read one out on the phone), odd prosody.
-
-### 4. If something fails
-
-**Report it, do not fix it.** This is a baseline; a recorded defect is a successful outcome. Any
-failure gets written here *and* raised as a blocker in `05-06-SUMMARY.md`.
-
-### 5. Recording the result
-
-Replace the fence at the top of this section with `phone_check: pass` or `phone_check: fail`, add
-the call date, and transcribe the eight answers verbatim below it. If the cross-sell answer to
-question 3 is *"not at all"*, update `## AUTO_APPROVE_PATH`'s cross-sell block to resolve
-explanation **(2)** — a genuine v11 gap — and open it as a blocker for a later voice plan.
+Also unexercised: the **escalation** path (this was auto-approve) and any **photo** beat (voice has
+none).
