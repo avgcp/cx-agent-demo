@@ -136,3 +136,32 @@ Plans:
 - [ ] 05-04 — Spanish (es-US) across every customer-facing string — covers criterion 5
 
 **Built so far**: `Meridian Claim - Chat (hardened)` `a2f621e4-9faf-505a-b804-22471f022366`, deployment `d7bfbb93` (`WEB_UI`/`CHAT_ONLY`) on version `bb14cdcc-d723-4be1-85af-9f4451e22ed5` (chat v7 — decision card reshaped to the SDK `order_summary` contract, rendering verified live 2026-08-09). Voice app `6e01e4a5` untouched on v11 `b17c9a26`.
+
+### Phase 6: Cross-Channel Claim Status — shared claim store, write from chat, lookup from voice and chat
+
+> **⚠ Like Phase 5, this phase changes running agents, not specification text.** Its success criteria are observable behaviours of deployed systems, verified by driving real conversations.
+
+**Goal**: A claim filed on one channel is retrievable on the other. A customer files on chat — with a photo — then phones in, identifies themselves, and hears the real status of that same claim, because both apps read and write one shared claim store.
+
+**Depends on**: Phase 5 (both channels must already produce claims with deterministic pricing, a decision, and an assessor packet).
+
+**Requirements**: (to be assigned — narrows DEF-01, deferred at milestone close, from full cross-channel session continuity to claim-reference lookup)
+
+**Success Criteria** (what must be TRUE of the deployed agents):
+  1. A claim resolved on chat is **persisted to a store outside either app**, keyed by claim reference, carrying at minimum: status, device, claim amount, excess, whether a photo was assessed, and the rules that fired.
+  2. A caller on **voice** can identify themselves and hear the status of a claim they filed on **chat** — the same claim reference, the same figures, spoken deterministically from the store and never invented by the model.
+  3. The lookup works in **both directions** — chat can retrieve a claim filed by phone.
+  4. **The caller is not required to read a claim reference aloud.** Speech-to-text on `CLM-24832` is fragile; identification by policy ID with a read-back of the most recent claim is the demo path. A reference may be accepted if offered.
+  5. A lookup for an unknown or mismatched reference fails gracefully and never fabricates a claim.
+  6. **No regression to Phase 5**: deterministic tariff pricing, byte-identical spoken decisions, single customer email, the assessor packet on the email-confirmation turn, the cross-sell, and every v1→v11 hardening item still hold on both channels.
+
+**Locked design decision (user, 2026-08-12): a REAL shared store, not seeded mock claims.** The seeded alternative was rejected because the loop would only appear to close — a claim filed live would not be findable. This also gives the spec an honest path-to-production story: swap the mock store for the carrier's claims system and nothing in the agents changes.
+
+**The open technical question, to be spiked first**: what can a CES Python code tool authenticate to? One data point exists — `resolve_claim` calls Resend over HTTPS with an API key held in the tool source, so **outbound HTTP with a shared secret is proven**. Whether a tool can obtain a Google-credentialed token for Firestore or GCS directly is unknown. If it cannot, the fallback is a small Cloud Run service fronting the store, called by both apps exactly the way Resend is called today.
+
+**Constraint**: mock/demo data only, consistent with the project's standing constraint. The store holds synthetic claims from the synthetic-data namespace in Section 4.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 6 to break down)

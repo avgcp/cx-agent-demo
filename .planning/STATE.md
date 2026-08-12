@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 ### Roadmap Evolution
 
 - Phase 5 added: Demo Build - Multimodal, Backend Reveal & Multilingual (build phase, not spec authoring)
+- Phase 6 added (2026-08-12): Cross-Channel Claim Status — a claim filed on one channel is retrievable on the other, via a shared claim store both apps read and write. Build phase, like Phase 5. Narrows DEF-01 (cross-channel continuity, deferred at milestone close) from full session continuity to claim-reference lookup. **User decision: a REAL store, not seeded mock claims** — seeded lookups were rejected because a live-filed claim would not be findable, so the loop would only appear to close. Open technical question to spike first: what a CES Python tool can authenticate to (outbound HTTPS with a shared secret is proven by `resolve_claim`'s Resend call; a Google-credentialed token for Firestore/GCS is unproven, with a Cloud Run service fronting the store as the fallback).
 
 ### Decisions
 
