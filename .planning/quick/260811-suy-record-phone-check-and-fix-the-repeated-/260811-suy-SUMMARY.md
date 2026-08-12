@@ -16,6 +16,40 @@ key-files:
 
 # 260811-suy — Phone check recorded; repeated-question defect fixed in the DRAFT
 
+> ## ⛔ PARTIALLY SUPERSEDED 2026-08-11 by quick task `260811-tgm`
+>
+> **This summary's history is left intact — nothing below is rewritten.** But two of its conclusions
+> were disproven by a **third live call**: conversation **`103r6XO3ZXjS3S97D-AtLK1ag`**, voice app
+> `6e01e4a5-42a8-5213-b3da-c9053ff8ea52`, `2026-08-12T02:06:37Z` → `02:08:35Z` (1m58s),
+> `channelType: AUDIO`, `source: LIVE`, deployment `d28bbcb0`, `appVersion` **`b17c9a26`** (v11),
+> policy `PDP100583`, 9 turns — the *same configuration* as this task's call
+> `081cCNZtVwgSGqmfMpFSpbxMQ`, placed 29 minutes later.
+>
+> **1. The cross-sell conclusion is WRONG.** This summary recorded it as a *"probable genuine gap,
+> two observations, one scripted retest outstanding."* **The cross-sell fires.** At turn 8 the agent
+> said, verbatim: *"…Also, I see you have an HP Pavilion 15 that isn't covered yet – would you like
+> to add that to your policy?"* Both prior negatives were **false negatives** — re-reading
+> `081cCNZtVwgSGqmfMpFSpbxMQ`'s own record shows it ended at turn 9 on the caller's *"¿Qué?"* and the
+> agent's sign-off, i.e. the call finished *before* the beat rather than skipping it. Explanation (1)
+> — presenter script, not capability — was right; explanation (2) is disproven on v11 itself.
+> No retest is outstanding.
+>
+> **2. The repeated-question defect is INTERMITTENT, not systematic.** The new call ran on live v11
+> `b17c9a26`, which does **not** carry this task's draft fix — and the diagnostic completed cleanly
+> (`q2` → asks `q1` → asks `q3` → terminal, `questions_asked: 3`,
+> `repeat_of_previous_question: false` throughout, no `DIAGNOSTIC_INCOMPLETE`). Two consequences:
+> **(a)** live-demo risk is lower than this summary implied — the failure depends on whether the
+> model jumps to `resolve_claim` early, and is a coin-flip rather than a certainty; **(b)** *the fix
+> made here cannot be validated by absence of the symptom*, because a clean run already occurs
+> pre-fix. Validating this task's patch requires asserting on recovery behaviour under an induced
+> `DIAGNOSTIC_INCOMPLETE`, not on "we called and it didn't repeat."
+>
+> **Unaffected by the correction:** everything in Part 2 (the draft patch itself, the +507-char
+> delta, byte-identical anchors on both apps), and the facts that no version was cut and no
+> deployment moved. Corrections are written into
+> `05-06-VOICE-BASELINE.md ## PHONE_CHECK` (items 3, 4, new 8 and 9), `05-06-SUMMARY.md` and
+> `.planning/STATE.md`. See `260811-tgm-SUMMARY.md`.
+
 The real GTP call was fetched and transcribed into `05-06-VOICE-BASELINE.md ## PHONE_CHECK`, and the
 one defect it exposed — the agent re-asking a question the customer had already answered — is fixed
 in **both** apps' drafts. **No version was cut. Neither deployment moved.**

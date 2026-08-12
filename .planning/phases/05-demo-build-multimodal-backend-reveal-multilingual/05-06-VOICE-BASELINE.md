@@ -18,16 +18,22 @@ literal and greppable — **do not rename them.** 05-07 (assessor packet on voic
 |---|---|
 | `## VOICE_INVENTORY` | `draft_equals_v11: true` — 2 agents, 5 python tools, 33 variables, deployment pinned to v11 |
 | `## GTP_SURFACE` | `audioProcessingConfig` has exactly two keys: `bargeInConfig` and `synthesizeSpeechConfigs` (`en-US` only) |
-| `## DECISION_SPEECH_EN` | `spoken_equals_explanation: **true**` — voice relays the tool's string byte-for-byte, in one chunk |
-| `## AUTO_APPROVE_PATH` | tariff `840 / 25 / 1500` PASS, one `send_claim_email`, **cross-sell did NOT fire** ❌ |
+| `## DECISION_SPEECH_EN` | `spoken_equals_explanation: **true**` — voice relays the tool's string byte-for-byte, in one chunk. **Holds on TEXT/API only** — see the 2026-08-11 audio-normalisation note in that section |
+| `## AUTO_APPROVE_PATH` | tariff `840 / 25 / 1500` PASS, one `send_claim_email`, ~~cross-sell did NOT fire ❌~~ → **CORRECTED 2026-08-11: cross-sell FIRES ✅** (`103r6XO3ZXjS3S97D-AtLK1ag`); the negative was a false negative |
 | `## ESCALATION_PATH` | `escalation_source: reused cae670d7-a6f1-491d-b782-921a53af6128` |
-| `## PHONE_CHECK` | **DONE 2026-08-12** — decision line PASS, single-send PASS, **repeated diagnostic question FAIL**, cross-sell did not fire (2nd observation) |
+| `## PHONE_CHECK` | **DONE 2026-08-12, CORRECTED 2026-08-11** — decision line PASS, single-send PASS, barge-in **PASS**, **cross-sell FIRES ✅**, repeated diagnostic question **intermittent, not systematic** |
 
 > **Two rows in this table were corrected after the evidence came in.** Task 1 wrote the table
 > ahead of Task 2 with the plan's *expectations* in it. Both were wrong, in opposite directions:
 > the decision speech turned out to be **deterministic** (better than expected), and the cross-sell
 > turned out **not to fire at all** (worse than expected). The section bodies are the authority;
 > this table is a convenience index.
+>
+> **Corrected again 2026-08-11 (task 260811-tgm).** The "cross-sell does not fire" finding was
+> itself wrong — it rested on two calls that both ended *before* the beat. A third live call,
+> `103r6XO3ZXjS3S97D-AtLK1ag` (`2026-08-12T02:06:37Z`, AUDIO/LIVE, v11 `b17c9a26`), shows the
+> offer firing verbatim. The cross-sell is **working**; treat any remaining "gap" language in this
+> file as superseded history.
 
 ---
 
@@ -308,6 +314,32 @@ Consequences for 05-09:
    (c) the string matches the block above with only the `CLM-` digits differing. Any of the three
    failing means self-narration or paraphrase has come back.
 
+> ### ⚠️ 05-09 MUST READ — `spoken_equals_explanation: true` holds on TEXT/API, **NOT** on AUDIO
+>
+> Added 2026-08-11 (task 260811-tgm). The byte-identity result above was measured on the
+> **text/API channel** (`runSession`). On the **AUDIO** channel the relayed text is normalised for
+> speech, and **the normalisation is not even stable between runs of the same version**:
+>
+> | Source | Channel | Decision amount as recorded |
+> |---|---|---|
+> | pinned `resolve_claim.explanation` / tool string | — | `$420` |
+> | conversation `081cCNZtVwgSGqmfMpFSpbxMQ` (`2026-08-12T01:37:41Z`) | AUDIO/LIVE, v11 `b17c9a26` | `420 dollars` |
+> | conversation `103r6XO3ZXjS3S97D-AtLK1ag` (`2026-08-12T02:06:37Z`) | AUDIO/LIVE, v11 `b17c9a26` | `420` |
+>
+> Same app, same version, same deployment, 29 minutes apart — one call spoke *"420 dollars"*, the
+> other *"420"*. The `$` sigil and the `CLM-` hyphen are likewise dropped on audio
+> (`CLM-24464` → `CLM 24464`).
+>
+> **Therefore: 05-09's Spanish byte-identity assertions must be run against the TEXT/API channel.**
+> A byte-comparison performed on an AUDIO-channel transcript **will fail spuriously** and will look
+> like a paraphrase/self-narration regression when nothing is wrong. If 05-09 needs an audio-channel
+> check, assert on *semantic* content (the four substantive fields are present, in order), never on
+> bytes.
+>
+> Note this does **not** weaken the underlying result: `relay_mismatch: false` on the tool response
+> in `103r6XO3ZXjS3S97D-AtLK1ag`, and the audio wording tracks the tool string clause-for-clause.
+> The variance is TTS-side text normalisation, not the model rewriting.
+
 ### The follow-on turns, verbatim (for completeness — 05-07/05-09 must not disturb these)
 
 Turn 3 (`Okay that works for me`), 116 chars, one chunk:
@@ -397,13 +429,20 @@ send_claim_email_turn_count: 1
 > mailbox inside the tool (`akash.vinayak@nerdery.com`). The `toolResponse` recipient is display
 > data; do not use it to assert where mail landed. This is why Task 3's mailbox check exists.
 
-### Cross-sell — DID NOT FIRE ❌
+### Cross-sell — ~~DID NOT FIRE ❌~~ → **FIRES ✅ (corrected 2026-08-11)**
+
+> **Read the ⛔ SUPERSEDED block at the end of this subsection before acting on anything in it.**
+> The `cross_sell_fired: false` result below is a **false negative** from a conversation that ended
+> before the beat. Live call `103r6XO3ZXjS3S97D-AtLK1ag` (`2026-08-12T02:06:37Z`, AUDIO/LIVE, v11
+> `b17c9a26`) shows the offer firing. The observations below are kept as the record of how the
+> wrong conclusion was reached.
 
 ```
-cross_sell_fired: false
+cross_sell_fired: false   ← FALSE NEGATIVE, see SUPERSEDED block below
 ```
 
-**This is the one substantive defect this baseline records on the auto-approve path.**
+~~**This is the one substantive defect this baseline records on the auto-approve path.**~~
+**It is not a defect.** The auto-approve path records no substantive cross-sell defect.
 
 | Check | Result |
 |---|---|
@@ -451,6 +490,44 @@ saying `"No thanks"`.
 > **Not yet proven**, because the caller did not run the exact scripted beat
 > (`"That's everything, thanks"` + 10 s of silence). Current status: **probable genuine gap
 > (explanation 2), two observations, one scripted retest still outstanding.**
+
+> ### ⛔ SUPERSEDED 2026-08-11 — THE CROSS-SELL FIRES. THERE IS NO GAP.
+>
+> **Everything above this line about a cross-sell gap is wrong and must not be carried forward.**
+> It is retained verbatim so the reversal is visible, not silently rewritten.
+>
+> **Evidence:** conversation **`103r6XO3ZXjS3S97D-AtLK1ag`**, voice app
+> `6e01e4a5-42a8-5213-b3da-c9053ff8ea52`, `2026-08-12T02:06:37Z` → `02:08:35Z` (1m58s),
+> `channelType: AUDIO`, `source: LIVE`, deployment `d28bbcb0`, `appVersion` **`b17c9a26`** (v11),
+> policy `PDP100583`, 9 turns. Verified by read-only `GET` on 2026-08-11.
+>
+> **Turn 8 of 9, verbatim from the record:**
+>
+> > "Please reply to that email with photos of the damage. Once those are in, allow three to seven
+> > business days for a representative to confirm everything. **Also, I see you have an HP Pavilion 15
+> > that isn't covered yet – would you like to add that to your policy?**"
+>
+> User: `"Uh sure."` → Agent: *"Great, I'll have someone send over the options for that. Thanks for
+> calling … have a good day."* → `end_session`. `uninsured_device` = `HP Pavilion 15`, same as the
+> two prior calls.
+>
+> **Both prior negatives were false negatives.** Neither call ever reached the beat:
+> - The `runSession` observation said `"No thanks"` early, which reads as refusal → `end_session`.
+> - The `## PHONE_CHECK` call `081cCNZtVwgSGqmfMpFSpbxMQ` closed at its turn 9 after the caller said
+>   `"¿Qué?"`, and the agent went straight to the sign-off — verified in that conversation's record.
+>
+> This is exactly the failure mode the runbook's own presenter note warns about
+> (*"Don't say 'no thanks' early"*). **Explanation (1) — runbook/caller script, not capability — is
+> the correct one after all**, and even it is only a *presenter-behaviour* caveat: with a neutral
+> reply the offer arrives unprompted.
+>
+> **Two shape facts worth carrying into 05-07 / the runbook:**
+> 1. The offer fired **appended to the send-away instructions in the same turn**, not as a turn of
+>    its own. Do not script it as a separate beat or wait for one.
+> 2. It fired **immediately after a barge-in** (see `## PHONE_CHECK`), i.e. interruption does not
+>    suppress it.
+>
+> **Status: cross-sell CONFIRMED WORKING on live voice v11. No retest outstanding. Not a blocker.**
 
 ### Session shape
 
@@ -603,6 +680,22 @@ Tool sequence, by turn: `verify_identity` (T1) → `run_diagnostic` (T2, T3, T4)
 (T5 — rejected)** → `run_diagnostic` (T6) → `resolve_claim` (T6) → `send_claim_email` (T7) →
 `end_session` (T8).
 
+> **A SECOND live call was placed 29 minutes later and changes three of the findings below.**
+> Conversation **`103r6XO3ZXjS3S97D-AtLK1ag`**, `2026-08-12T02:06:37Z` → `02:08:35Z` (1m58s),
+> `channelType: AUDIO`, `source: LIVE`, deployment `d28bbcb0`, `appVersion` **`b17c9a26`** (v11),
+> policy **PDP100583**, **9 turns** — identical configuration to the call above. Recorded by task
+> `260811-tgm` on 2026-08-11, read-only. It changes:
+>
+> | Item | Was | Now |
+> |---|---|---|
+> | 3 — repeated diagnostic question | systematic FAIL | **intermittent** — ran clean on unfixed v11 |
+> | 4 — cross-sell | did not fire (2nd observation) | **FIRES ✅** — both negatives were false negatives |
+> | open item 4 — barge-in | untested | **PASS**, with content-aware recovery (new item 8) |
+>
+> It also adds a new open item (**9 — possible double email**) and the audio-channel text
+> normalisation warning now recorded in `## DECISION_SPEECH_EN`, which 05-09 must read.
+> Items 1, 2, 5, 6 and 7 below are unaffected.
+
 ---
 
 ### 1. PASS — the decision line, correctly re-priced
@@ -688,6 +781,22 @@ the caller has already answered in order to recover. `claim_intake` 14,140 → *
 (+507), one contiguous region. **The live phone number still exhibits this defect** until a version
 is cut and `d28bbcb0` is repointed — see `260811-suy-SUMMARY.md`.
 
+> **NUANCE ADDED 2026-08-11 — the defect is INTERMITTENT, not systematic.** Conversation
+> `103r6XO3ZXjS3S97D-AtLK1ag` (`2026-08-12T02:06:37Z`, AUDIO/LIVE) ran on live **v11 `b17c9a26`**,
+> which does **not** carry the `260811-suy` draft fix — and the diagnostic completed cleanly:
+> `q2` supplied at T4 → tool asks `q1` → `q1=screen` at T5 → tool asks `q3` → `q3=works_normally`
+> at T6 → `terminal REPAIRABLE`, `questions_asked: 3`, and `repeat_of_previous_question: false` on
+> every response. **No repeated question, no `DIAGNOSTIC_INCOMPLETE`, no wasted turn.**
+>
+> Two consequences, both load-bearing:
+> 1. **Demo risk is lower than `260811-suy` implied.** The failure depends on whether the model
+>    jumps to `resolve_claim` before the diagnostic reaches terminal — it happens on some runs and
+>    not others on the *same* version. It is a coin-flip, not a certainty.
+> 2. **The draft fix cannot be validated by absence of the symptom.** A clean post-fix call proves
+>    nothing, because a clean call already occurs pre-fix. Any validation of `260811-suy` must
+>    assert on the *instruction text / recovery behaviour under an induced
+>    `DIAGNOSTIC_INCOMPLETE`*, not on "we ran it and it didn't repeat."
+
 ### 4. Cross-sell did NOT fire — second independent observation
 
 ```
@@ -714,6 +823,47 @@ of silence afterwards. **Status: probable genuine gap (explanation 2) — two in
 observations, one scripted retest still outstanding.** The retest is unchanged and still worth 3
 minutes: reach the email-confirmation turn, say *"That's everything, thanks"*, then **say nothing
 for 10 seconds**.
+
+> #### ⛔ SUPERSEDED 2026-08-11 — the retest happened. **THE CROSS-SELL FIRES.**
+>
+> Item 4 above is **wrong**. It is left intact so the reversal is auditable, but nothing in it may
+> be carried into 05-07, 05-09 or the runbook. `cross_sell_fired: **true**`.
+>
+> **Evidence — conversation `103r6XO3ZXjS3S97D-AtLK1ag`**, same app
+> `6e01e4a5-42a8-5213-b3da-c9053ff8ea52`, same deployment `d28bbcb0`, same version **v11
+> `b17c9a26`**, same policy **PDP100583**, `channelType: AUDIO`, `source: LIVE`,
+> `2026-08-12T02:06:37Z` → `02:08:35Z` (**1m58s**), 9 turns — i.e. a call placed **29 minutes after**
+> `081cCNZtVwgSGqmfMpFSpbxMQ`, on identical configuration. Verified by read-only `GET` 2026-08-11.
+>
+> **Turn 8 of 9, agent, verbatim:**
+>
+> > "Please reply to that email with photos of the damage. Once those are in, allow three to seven
+> > business days for a representative to confirm everything. **Also, I see you have an HP Pavilion 15
+> > that isn't covered yet – would you like to add that to your policy?**"
+>
+> Turn 9 — user `"Uh sure."` → agent *"Great, I'll have someone send over the options for that.
+> Thanks for calling … have a good day."* → `end_session`. `uninsured_device` = `HP Pavilion 15`,
+> exactly as in the call above.
+>
+> **Both prior negatives were false negatives — neither conversation reached the beat.**
+> Re-reading `081cCNZtVwgSGqmfMpFSpbxMQ`'s own record: its turn 8 carried the send-away line, the
+> customer said **"¿Qué?"** at turn 9, and the agent went straight to the sign-off + `end_session`.
+> The call ended *before* the offer's slot, it did not skip it. The `runSession` observation in
+> `## AUTO_APPROVE_PATH` failed the same way via an early `"No thanks"`. This is precisely the
+> failure the runbook's presenter note warns about: *"Don't say 'no thanks' early."*
+>
+> **Explanation (1) was right all along**, and even then only as presenter guidance — the offer
+> arrives unprompted off a neutral reply, with no 10 s of silence required. **Explanation (2), the
+> "v11 capability gap", is disproven on v11 itself.**
+>
+> **Two shape facts for the runbook and 05-07:**
+> 1. The offer is **appended to the send-away instructions inside the same agent turn** — it is not
+>    a turn of its own. Do not script a pause waiting for a separate beat; the runbook's "three
+>    separate turns" phrasing is inaccurate on this point.
+> 2. It fired **on the turn immediately following a barge-in** (item 8 below), so interruption does
+>    not suppress it.
+>
+> **No retest outstanding. Not a blocker. Cross-sell is CONFIRMED WORKING on live voice v11.**
 
 ### 5. Spanish — did not switch (suggestive, not conclusive)
 
@@ -772,9 +922,63 @@ these four were **not reported back** and remain unverified:
 | # | Open item | Why the record cannot settle it |
 |---|---|---|
 | 1 | **The phone number**, and the `☎ ____` blank in `DEMO-RUNBOOK.md` | not API-retrievable; `telephony-caller-id` in the record is the *caller*, and is redacted |
-| 4 | **Barge-in** — does talking over it interrupt? | requires a deliberate interruption; the transcript shows none was attempted |
+| ~~4~~ | ~~**Barge-in** — does talking over it interrupt?~~ | **CLOSED 2026-08-11 — PASS.** See item 8 below |
 | 6 | **The close** — were the literal `"` quote marks voiced? | this call closed on *"Thanks for calling, &lt;name&gt; - have a good day."*, which carries **no** quote marks — a **different sentence** from the `"Understood. Have a good day."` recorded in `## DECISION_SPEECH_EN`. BLOCKER 2 is therefore **untested**, not cleared |
-| 7 | **The mailbox** — how many mails actually landed | the record proves one send call, not one delivery |
+| 7 | **The mailbox** — how many mails actually landed | the record proves one send call, not one delivery. **Sharpened 2026-08-11 — see item 9** |
 
 Also unexercised: the **escalation** path (this was auto-approve) and any **photo** beat (voice has
 none).
+
+---
+
+### 8. PASS — barge-in CONFIRMED WORKING (added 2026-08-11, closes open item 4)
+
+Open item 4 above is **closed**. Evidence: conversation **`103r6XO3ZXjS3S97D-AtLK1ag`**
+(`2026-08-12T02:06:37Z` → `02:08:35Z`, AUDIO/LIVE, deployment `d28bbcb0`, v11 `b17c9a26`).
+
+The caller talked over the agent mid-sentence at turn 7. Turn 8's user message carries the
+platform's own interruption marker, verbatim from the record:
+
+```
+<context>agent speaking was interrupted. user only heard 'Since we've' in the last agent response.</context>
+```
+
+Turn 7's agent text was *"Since we've approved that, an email is already on its way to the address
+we have on…"* — cut off exactly where the marker says.
+
+Two things are proven, and the second is the interesting one:
+
+1. **Barge-in works** — the interruption was registered, not swallowed. `bargeInConfig` in
+   `## GTP_SURFACE` is live and effective.
+2. **The agent knows *how much* the caller heard** (`'Since we've'`) and **recovered by
+   re-delivering the missed content** — turn 8 restates the reply-with-photos instruction and the
+   3–7 business-day expectation before appending the cross-sell. This is materially better than
+   "the interruption was detected"; the agent repaired the conversation without the caller having
+   to ask.
+
+**Demo implication:** interrupting the agent is safe and is itself a credible wow beat. Nothing is
+lost when a presenter cuts in.
+
+### 9. OPEN — `send_claim_email` was called twice; inbox confirmation still needed
+
+In `103r6XO3ZXjS3S97D-AtLK1ag`, `send_claim_email(policy_id=PDP100583)` was called on **two**
+turns — 7 and 8 — where every prior record (v1 → v11, item 2 above) shows single-send as an
+invariant.
+
+**The record does not show a defect, and none may be asserted from it.** Both calls returned
+**identical** payloads:
+
+| Turn | `sent` | `delivery` | `message` |
+|---|---|---|---|
+| 7 | `true` | `live` | `Email already sent when the claim was decided. Customer should reply with photos attached.` |
+| 8 | `true` | `live` | *(same string)* |
+
+`resolve_claim` at turn 6 had already returned `email_queued: true` — so the email was sent at
+decision time, and **both** `send_claim_email` calls are idempotent reports of that one send, not
+sends. That is the invariant holding, not breaking.
+
+**Why it stays open anyway:** `sent: true` is ambiguous on its face — it reads the same whether the
+tool sent or merely reported a prior send — and the tool's source cannot be read to settle it
+(it holds a live Resend key). **The only thing that closes this is an inbox check: confirm exactly
+ONE email for `CLM-24464` landed at the policy address.** Until then, treat it as an open question,
+not a defect. It also folds in open item 7 above, which asks the same question with less evidence.

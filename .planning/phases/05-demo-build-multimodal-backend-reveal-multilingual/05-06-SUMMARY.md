@@ -40,6 +40,12 @@ Established the voice channel's regression anchor from live evidence — and fou
 sentence is **relayed verbatim from the pricing tool** (better than expected) while the **cross-sell
 beat never fired** (worse than expected).
 
+> **CORRECTED 2026-08-11 (quick task `260811-tgm`): the cross-sell DOES fire.** A third live call,
+> conversation `103r6XO3ZXjS3S97D-AtLK1ag` (`2026-08-12T02:06:37Z`, AUDIO/LIVE, v11 `b17c9a26`),
+> shows the offer landing verbatim on the auto-approve path. The two observations behind the
+> "never fired" claim were both **false negatives** — those conversations ended before the beat.
+> **BLOCKER 1 below is withdrawn.** See the ⛔ block in `## Blockers`.
+
 ## What Happened
 
 Two prior executors stalled on a 600s watchdog at the Scenario A `runSession` call. **Neither stall
@@ -140,6 +146,41 @@ seconds before *"No thanks"*.
 > *"That's everything, thanks"*, and did not hold the 10 seconds of silence. **Current status:
 > probable genuine gap (explanation 2) — two observations, one scripted retest still
 > outstanding.** Detail in `05-06-VOICE-BASELINE.md ## PHONE_CHECK` item 4.
+
+> ### ⛔ BLOCKER 1 WITHDRAWN 2026-08-11 (quick task `260811-tgm`) — THE CROSS-SELL FIRES
+>
+> **This blocker is not real.** Everything above it in BLOCKER 1, including the 2026-08-12 update,
+> is superseded. It is retained verbatim so the reversal is auditable rather than silently
+> rewritten. `cross_sell_fired: **true**`.
+>
+> **Evidence — a third live call:** conversation **`103r6XO3ZXjS3S97D-AtLK1ag`**, voice app
+> `6e01e4a5-42a8-5213-b3da-c9053ff8ea52`, `2026-08-12T02:06:37Z` → `02:08:35Z` (1m58s),
+> `channelType: AUDIO`, `source: LIVE`, deployment `d28bbcb0`, `appVersion` **`b17c9a26`** (v11),
+> policy `PDP100583`, 9 turns — same configuration as `081cCNZtVwgSGqmfMpFSpbxMQ`, placed 29
+> minutes later. Verified read-only 2026-08-11.
+>
+> **Turn 8 of 9, agent, verbatim:**
+>
+> > "Please reply to that email with photos of the damage. Once those are in, allow three to seven
+> > business days for a representative to confirm everything. **Also, I see you have an HP Pavilion
+> > 15 that isn't covered yet – would you like to add that to your policy?**"
+>
+> The customer said *"Uh sure."* and the agent took the lead-in — *"Great, I'll have someone send
+> over the options for that."* — then closed with `end_session`.
+>
+> **Both earlier negatives were false negatives: neither conversation reached the beat.**
+> `081cCNZtVwgSGqmfMpFSpbxMQ` ended at its turn 9 after the caller said *"¿Qué?"* and the agent went
+> to the sign-off; the `runSession` observation ended on an early *"No thanks"*. Exactly the failure
+> the runbook's own presenter note warns about. **Explanation (1) was correct** — and only as
+> presenter guidance, since the offer arrives unprompted off a neutral reply with no 10 s pause
+> needed. **Explanation (2), the v11 capability gap, is disproven on v11 itself.**
+>
+> **Runbook accuracy note:** the offer is appended to the send-away instructions **within the same
+> agent turn**, not delivered as a turn of its own — the runbook's *"three separate turns"* phrasing
+> is wrong on this point. It also fired on the turn immediately after a **barge-in**, so
+> interrupting the agent does not suppress it.
+>
+> **No retest outstanding. The `"cost centre → profit centre"` wow moment works on live voice v11.**
 
 This matters commercially: the cross-sell is the *"cost centre → profit centre"* wow moment.
 
