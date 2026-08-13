@@ -478,9 +478,38 @@ damage (*"I spilled a glass of water on it"*) still escalates immediately.
 **Talk normally.** It handles a whole claim in one breath — *"dropped it, screen's cracked,
 no liquid, still works otherwise"* gets you straight to the decision without a Q&A.
 
-**If it mishears the policy ID, just say the number again.** It matches on the digits, so
-"PDP" coming through as "TDP" or "BDP" no longer matters. Saying "P D P" and the digits in
-separate turns also works.
+**⚠ SAY THE POLICY ID DIGIT BY DIGIT, SLOWLY — AND EXPECT A RETRY.** *(corrected 2026-08-13 after
+a live call; the previous "it no longer matters" wording was too confident.)* On the **phone**,
+speech-to-text mangles alphanumeric identifiers badly. A real call on 2026-08-13
+(`119vrJXUcbjQCO4DWJ_0w7xxw`) took **five turns and three `verify_identity` calls** to capture one
+policy ID — the transcript went `PGP` → `PDP` → `1000294` → `TDP100294` before `PDP100294` landed.
+That is roughly a third of a two-minute demo spent failing to authenticate, immediately before the
+moment the agent is meant to look brilliant.
+
+Mitigations, in order of usefulness:
+- **Say it slowly, letter by letter and digit by digit**, and pause between the prefix and the
+  digits. Do not rattle it off.
+- **Do not talk over it while it is confirming** — a barge-in mid-sequence made this call worse.
+- If it mishears, **just say the number again**; it does recover, it simply costs turns.
+- On **chat** this is a non-issue — type it.
+
+*(The store-side lookups in Phase 6 already normalise keys so a spoken **claim reference** survives
+transcription. The **authentication** path has no equivalent normalisation, which is why this still
+bites. Recorded as a demo risk, not yet fixed — see `260813-olv-SUMMARY.md`.)*
+
+**⚠ LANGUAGE: pick one language before you authenticate, and stay in it.** *(phone, live v14
+`5d02f14c`, 2026-08-13.)* Spanish works end to end — greeting, identity, handoff, decision,
+send-away and cross-sell — **provided the caller does not change language mid-call**:
+
+- **Switching language BEFORE authentication completes is currently a call-killer on the live
+  build.** The agent resets to the language the call opened in at the moment it hands you to
+  claims, and will not come back. This is **fixed in voice v15 `17b2e438`, which is built and
+  versioned but NOT deployed** — check which version `d28bbcb0` is serving before you rely on it.
+- **Switching language AFTER the handoff does not work on any build.** Do not script it. It is the
+  one language beat that has never worked.
+- The demonstrable beats are **"the whole call in Spanish"** and, on v15, **"the caller starts in
+  one language and settles into another before authenticating."** Both land without a mid-claim
+  switch.
 
 **Off-script questions are safe.** Ask it about the weather. It declines and steers back to
 the claim without breaking character — a good moment to point out it isn't a script.
