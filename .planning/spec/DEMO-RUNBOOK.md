@@ -516,6 +516,15 @@ curl -X PATCH \
 
 Then **reload `http://localhost:3000`** so the widget picks the version up.
 
+> **⚠ The chat DRAFT is ahead of v13 and has never been cut into a version** (quick task
+> `260812-o5l`, 2026-08-12). It carries the photo attachment on the assessor packet and the
+> photo-redundancy fix — so the draft no longer asks a customer to email in a photo they just
+> uploaded. **Two canaries held the gate**: `cover_offer_actions` did not fire on the approve
+> run, and the live escalated packet went out with no attachment because the agent called
+> `assess_screen_crack` two turns after the upload. **Anyone cutting a chat version from the
+> draft will ship all of that** — re-run both canaries first. Nothing below is affected: the
+> deployment still serves v13.
+
 | Version | ID | Notes |
 |---|---|---|
 | **v13** | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | **Current.** Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
