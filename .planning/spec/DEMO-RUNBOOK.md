@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | **v13** `5d9df25c-3771-45bb-bd20-b28978cc5955` — *the assessor briefing packet on the phone channel* |
-| Roll back to | **v11** `b17c9a26-3485-4658-9259-dfa4839a7977` — the build the phone served up to 2026-08-12. See *If something goes wrong (phone)*. |
+| Version live | `cdca14e3-5b0e-4675-9861-f5f22736362f` — *chat v14, the customer's photo attached to the assessor packet, the send-away line and customer email no longer ask for a photo already sent, and the cross-sell protected from the new closing wording* (supersedes v13 `1eb3fd5c` packet currency + `[CHAT]` token, v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v14**) |
+| Roll back to | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` — chat v13. Loses the photo attachment and re-introduces asking the customer for a photo they already sent, but is the last version watched end to end before v14. See *If something goes wrong (chat)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -297,8 +297,9 @@ than any slide, because the audience watched it happen.
 
 ### The briefing packet — *the backend claims-processing reveal*
 
-**New in chat v10 `658472a0` (2026-08-11), made reliable in v12 `26c3aebd` (2026-08-12).**
-Every escalated chat claim now writes a
+**New in chat v10 `658472a0` (2026-08-11), made reliable in v12 `26c3aebd` (2026-08-12), and
+in v14 `cdca14e3` (2026-08-13) the packet now carries the customer's own photo as a real
+file attachment.** Every escalated chat claim now writes a
 six-section **assessor briefing packet** and sends it as a **second, separate email** — the
 specialist's handover, composed from the session's own recorded facts. The customer never sees
 it, is never told about it, and hears nothing different.
@@ -307,8 +308,18 @@ it, is never told about it, and hears nothing different.
 
 | | Subject | Who it is for |
 |---|---|---|
-| Customer confirmation | `Claim CLM-24xxx - please reply with photos` | the customer |
+| Customer confirmation | `Claim CLM-24xxx - please reply with photos`, or — when the customer already uploaded one — `Claim CLM-24xxx - photo received, nothing needed` | the customer |
 | **Briefing packet** | **`[ASSESSOR] [CHAT] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
+
+**The photo the customer uploaded is attached to the packet as a real file** (new in v14
+`cdca14e3`, 2026-08-13), named `CLM-24xxx-damage.png`. Open it on screen: the specialist gets
+the evidence, not a description of it. If no photo was ever assessed, the packet still sends,
+unchanged, with no attachment — the reveal never depends on it.
+
+**And the agent stops asking for something it already has.** When a photo has been assessed, the
+send-away line becomes *"the photo you sent is already attached to the claim, so there is nothing
+further you need to send us"*, and the customer email says the same. This is worth pointing at:
+the old behaviour asked a customer to email in a photo they had uploaded thirty seconds earlier.
 
 Both arrive at **`akash.vinayak@nerdery.com`**. That is a demo constraint, not the design —
 Resend's shared `onboarding@resend.dev` sender only delivers to the account-owning mailbox.
@@ -398,9 +409,10 @@ record is already sent. **You do not need to send another message.**
 - It writes in short structured messages rather than one-thing-per-turn speech.
 - It will show the email address on file; on the phone it never reads one out.
 - The escalation and cross-sell beats behave the same.
-- **The briefing packet fires on both channels now** (voice v13 `5d9df25c` / chat v13
-  `1eb3fd5c`), on the escalation path only, with identical six sections. The only difference
-  is the subject token — `[ASSESSOR] [VOICE]` vs `[ASSESSOR] [CHAT]`.
+- **The briefing packet fires on both channels now** (voice v13 `5d9df25c` / chat v14
+  `cdca14e3`), on the escalation path only, with identical six sections. Two differences:
+  the subject token — `[ASSESSOR] [VOICE]` vs `[ASSESSOR] [CHAT]` — and **only the chat packet
+  can carry the customer's photo as an attachment**, because only chat can receive one.
 - **The photo gate only applies to screen repairs.** A liquid total loss escalates
   immediately, exactly as on the phone — no photo needed.
 
@@ -427,6 +439,17 @@ a different device or a smaller policy.
 ---
 
 ## Presenter notes
+
+**Send the photo when it asks for it, not after the decision.** (chat, v14 `cdca14e3`)
+The photo is attachable only on the turn it arrives, and the customer's confirmation email is
+written the moment the claim is priced. Upload it when prompted — or, if you are volunteering
+one on the total-loss run, do it **before** the price appears. Volunteer it after the decision
+and the packet still gets the attachment, but the email will read *"please reply with photos"*
+while the agent says the photo is attached.
+
+**On the cross-sell, tap "Add it".** Declining works but can close the chat without a farewell
+line. Accepting gives you *"I will get the options sent over"* and a warm close — the better
+ending anyway.
 
 **Mentioning liquid is safe now.** If you say something loose like *"there was water on the
 ground where it fell"*, it asks whether any of it actually got on the device rather than
@@ -502,6 +525,63 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
+**Roll back the chat deployment to v13 `1eb3fd5c`** — the last version watched end to end
+before v14. You lose the photo attachment on the assessor packet, and the agent goes back to
+asking the customer to email in a photo they just uploaded. One call:
+
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/1eb3fd5c-5aff-46c8-b572-e3fe18bf966f"}' \
+  "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
+```
+
+Then **reload `http://localhost:3000`** so the widget picks the version up.
+
+> **v14 is live and the draft matches it byte for byte** (quick task `260812-o5l`,
+> 2026-08-13). Both canaries that held the gate on 2026-08-12 were **real defects and both are
+> fixed**: the cross-sell was being killed by an `end_session` on the send-away turn (caused by
+> the new closing wording, proven against a live-v13 control), and the photo could not be
+> captured mid-diagnostic because a `beforeToolCallback` refused `assess_screen_crack` before
+> its body ran. The full canary set — decision card, cross-sell, spoken send-away, one customer
+> email, deterministic tariff, six-section packet on the email turn, attachment present and
+> correctly absent — passed on the **deployment itself**, not only the draft.
+
+| Version | ID | Notes |
+|---|---|---|
+| **v13** | `5d9df25c-3771-45bb-bd20-b28978cc5955` | **Current.** Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
+| v12 | `9227210b-e46b-41bd-af7d-59db48abb3a6` | **Never deployed. Do not roll onto it.** Cut mid-plan; its packet mailer throws on every send (unsupported `timeout` argument) so no assessor email is ever delivered |
+| **v11** | `b17c9a26-3485-4658-9259-dfa4839a7977` | **Roll back to this.** No self-narration; no packet |
+| v10 | `6ec881a1-081f-4859-8edb-4329d801c3d8` | Liquid-ingress disambiguation |
+| v9 | `ff095eeb-95a9-42f1-987d-8f2ed61d9304` | Device framing + mismatch cross-sell |
+| v7 | `718b6fb3-eb4d-4b56-a7d6-39eb3f81c875` | Previous good build, assumes the covered device |
+| — | `5d24c721-4ecc-4166-a595-9d2e151a2e16` | ⚠️ Mails a different address — do not use |
+| — | `a435521a-87ad-4e65-912f-ec86cc747a67` | ⚠️ Mails a different address, no working key — do not use |
+| v6 | `ecab48ad-5dc2-438b-987d-e47f561bf79c` | ⚠️ **Avoid** — repeats lines aloud |
+| v5 | `0dd52030-d0a8-44d7-8750-cc0ef6c31962` | Safe fallback, emails you |
+| v4 | `81f80c75-e8de-4b3d-8f05-30455d8c01d5` | First with live email |
+| v3 | `9eba0634-93aa-448c-9b61-91ffb2818930` | No live email |
+| v2 | `c3ede5f3-dd3e-475c-b658-3fd660e2c384` | |
+| v1 | `a49ca4f7-6e6a-4bfd-90df-f9e90596056c` | Earliest |
+
+**Stay on v13.** If it misbehaves, drop to **v11**, then **v10**, then **v9** — same conversation
+quality, emails you, only difference is the email is composed at a slightly later step.
+
+The two unnumbered versions above were cut during a parallel edit and point the claim email
+at a different mailbox. Don't roll onto them by accident.
+
+**The email cannot break the call.** If the network or the mail provider fails, the agent
+falls back to a drafted message and the conversation continues untouched. You lose the
+inbox moment, nothing else.
+
+**Editing anything?** A deployment pins a *version*. Changing the app does **not** change
+what the phone number serves — you must cut a new version and repoint the deployment.
+
+---
+
+## If something goes wrong  *(chat)*
+
 **Roll back the chat deployment to v12 `26c3aebd`** — identical behaviour to what is live,
 except the packet's money prints as `3000.0` / `25.0` and the subject carries no `[CHAT]`
 token. One call:
@@ -527,8 +607,9 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v13** | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | **Current.** Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
-| **v12** | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | **Roll back to this.** Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close actually fire |
+| **v14** | `cdca14e3-5b0e-4675-9861-f5f22736362f` | **Current.** The customer's uploaded photo is attached to the assessor packet as a real file; the spoken send-away line and the customer email both stop asking for a photo already sent; `assess_screen_crack`'s callback gate re-keyed so a photo volunteered mid-diagnostic is still capturable; the AUTO_APPROVE send-away turn can no longer close the call and kill the cross-sell |
+| **v13** | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | **Roll back to this.** Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
+| v12 | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close actually fire |
 | v11 | `838b6d2b-1e9f-44f8-b319-941c3e4ea10b` | **Never deployed. Do not roll onto it.** Cut mid-task; files the packet on the right turn but the agent says *nothing* to the customer on that turn |
 | v10 | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | Assessor briefing packet, but on the turn *after* the email — needs one extra customer message or nothing is filed |
 | v9 | `160dc3b2-571c-480f-b901-e4dbe8947f70` | Spoken decision explanation, no packet |
