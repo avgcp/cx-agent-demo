@@ -17,7 +17,11 @@ key-files:
     - ".planning/phases/06-cross-channel-claim-status-shared-claim-store-write-from-cha/06-01-SPIKE-FINDINGS.md"
   modified: []
 decisions:
+  - "LOCKED by the user 2026-08-12 (literal reply: `as-proven`). Rungs 3 (Cloud Run, costed not built) and 4 (third-party host) formally rejected."
   - "Rung 2 chosen: GCS via the S3-compatible XML API with a GCS HMAC key. No new GCP service, no operated component, no data leaves the project."
+  - "Bucket gs://meridian-claim-store-500614 and SA claim-store-writer@ are ACCEPTED as permanent - do NOT delete."
+  - "Store tools must assert on status_code, never on ExternalResponse.ok, which is True even at status_code 0."
+  - "ces_requests is an injected global; `import ces_requests` fails."
   - "Two objects per claim — claims/by-policy/{POLICY_KEY}.json (newest-first array) and claims/by-ref/{CLAIM_KEY}.json — so both lookups are one GET."
   - "Keys normalised (PDP-100294 -> PDP100294) so a spoken policy id survives speech-to-text."
   - "No pre-composed prose in the stored record; the status sentence is composed at read time in Python."
@@ -123,11 +127,26 @@ engine.
 
 ## Blocking external dependency
 
-**None for the mechanism** — nothing needs deploying and no service needs enabling before 06-02 can
-run. The single blocking item is **the user's lock on the store choice and schema** (Task 3, an
-autonomous=false decision checkpoint). If the user accepts, 06-02 starts immediately; if the user
-rejects rung 2, the bucket and service account should be deleted and the phase falls back to the
-unproven Cloud Run rung.
+**NONE. Cleared.** Nothing needs deploying and no GCP service needs enabling before 06-02 can run.
+
+The one blocking item — the user's lock (Task 3) — was **answered `as-proven` on 2026-08-12**. Rung
+2 is LOCKED for the whole phase; rungs 3 (Cloud Run, costed but never built) and 4 (third-party
+host) are formally rejected. The lock explicitly accepts the HMAC secret in tool source, the schema
+as written, and **the bucket and service account as permanent — they must NOT be deleted.**
+**06-02 is unblocked.**
+
+## MANDATORY reading for 06-02 / 06-03 / 06-04
+
+Two of these would each let a store tool **silently report success on a write that never happened**.
+
+1. **`import ces_requests` FAILS** (`ModuleNotFoundError`) — it is an **injected global**. Use
+   `globals()["ces_requests"]`. Same for `requests`, `context`, `tools`, `async_tools`, `Part`,
+   `Blob`, `StatusError`.
+2. **`ExternalResponse.ok` is `True` even when `status_code` is `0`.** Every store tool **MUST**
+   assert on `status_code` (`200`/`201` write, `200` read, `404` miss) and **never** on `.ok`.
+3. **`ExecutionType` accepts `ASYNCHRONOUS`** (`"ASYNC"` → 400, `"ASYNCHRONOUS"` → 200), and
+   `ces_requests.async_*` exists — **this may remove 06-04's voice-latency concern entirely.**
+   Check before designing around a problem that may not exist.
 
 ## Isolation and safety
 

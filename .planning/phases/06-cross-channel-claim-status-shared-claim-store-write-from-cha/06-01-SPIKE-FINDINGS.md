@@ -270,8 +270,10 @@ found in 260812-o5l does not apply to it.
 
 ## STORE_DECISION
 
-**Status: RECOMMENDED — AWAITING USER LOCK (Task 3, blocking decision checkpoint).**
-Recorded 2026-08-13. The user's literal words, once given, are appended verbatim below.
+**Status: LOCKED by the user, 2026-08-12.** Rung 2 is the mechanism for the whole of Phase 6.
+Rungs 3 (Cloud Run) and 4 (third-party host) are **formally rejected** — Cloud Run was costed but
+never built, and nothing in this phase may re-open them. The user's literal words are recorded
+verbatim under **User's lock** below.
 
 ### The decision, as it must be presented
 
@@ -315,16 +317,64 @@ Recorded 2026-08-13. The user's literal words, once given, are appended verbatim
    latency problem at all** — and even synchronously, the whole ten-call probe finished in 3.56 s,
    against a real write of 1 GET + 2 PUTs.
 
-### If the user rejects this rung
+### Rejected rungs — closed, do not re-litigate
 
-Rung 3 (Cloud Run) remains available — the executor's account holds `serviceusage.services.enable`
-and `run.services.create`, verified by `testIamPermissions`. It is **not proven by execution**, and
-adopting it re-opens the unknown this plan was written to close. Rejecting rung 2 also means
-deleting `gs://meridian-claim-store-500614` and the `claim-store-writer` service account.
+**Rung 3 (a Cloud Run service fronting the store) — REJECTED.** It was costed, not built. It remains
+technically available (the executor's account holds `serviceusage.services.enable` and
+`run.services.create`, verified by `testIamPermissions`), but it is **not proven by execution**,
+it would require enabling `run.googleapis.com`, `artifactregistry.googleapis.com` and
+`cloudbuild.googleapis.com` — all three currently disabled — and it adds a component somebody has to
+operate for the life of the demo, in exchange for nothing rung 2 does not already deliver.
+
+**Rung 4 (a third-party HTTPS JSON store) — REJECTED.** It would put synthetic claim records on a
+host outside the customer's project and add a second vendor to the spec's path-to-production story,
+again for no gain over rung 2.
 
 ### User's lock
 
-> _(pending — to be recorded verbatim, with the date, when the checkpoint is answered)_
+**Locked 2026-08-12. The user's literal reply:**
+
+> `as-proven`
+
+The lock accepts, explicitly, all three costs:
+
+1. **A GCS HMAC secret embedded in tool source on both apps** — accepted as the same risk class as
+   the Resend key already living in `resolve_claim`.
+2. **The two resources created by this plan are ACCEPTED and must NOT be deleted** — bucket
+   `gs://meridian-claim-store-500614` (US, uniform bucket-level access, public access prevention
+   enforced) and service account
+   `claim-store-writer@insurance-agent-demo-500614.iam.gserviceaccount.com` with
+   `roles/storage.objectAdmin` **on that bucket only**.
+3. **The schema exactly as written above** — two objects per claim
+   (`claims/by-policy/{POLICY_KEY}.json` newest-first, `claims/by-ref/{CLAIM_KEY}.json`), the field
+   list as specified, normalised keys, and **no pre-composed prose field**; the status sentence is
+   composed at read time in Python.
+
+**Rung 2 is the locked mechanism for the whole of Phase 6.** 06-02, 06-03 and 06-04 build on it
+without re-deriving anything from this document.
+
+### MANDATORY for every store tool written in 06-02, 06-03 and 06-04
+
+Three platform facts, each proven here by execution. The first two would each let a store tool
+**silently report success on a write that never happened** — read them before writing a line of
+`record_claim` or `lookup_claim`.
+
+1. **`import ces_requests` FAILS with `ModuleNotFoundError`.** It is an **injected global**, not an
+   importable module. Get it with `globals()["ces_requests"]`. The same is true of `requests`,
+   `context`, `tools`, `async_tools`, `Part`, `Blob` and `StatusError`. A tool that wraps its HTTP
+   call in `try: import ces_requests / except: return {...}` will do **nothing** and report whatever
+   its fallback says — the 05-07 swallowed-exception shape, with a store write at stake this time.
+2. **`ExternalResponse.ok` is `True` even when `status_code` is `0`.** Observed directly: the
+   metadata probe returned `ok: true, status_code: 0, reason: "Error fetching from URL"` on a request
+   that never reached a server. **Every store tool MUST assert on `status_code` explicitly** — a
+   write is `status_code in (200, 201)`, a read is `status_code == 200`, a miss is
+   `status_code == 404` — and **must never branch on `.ok`**.
+3. **`ExecutionType` accepts `ASYNCHRONOUS`** (a `PATCH` with `"ASYNC"` returned **400**, with
+   `"ASYNCHRONOUS"` returned **200**), and `ces_requests.async_get/post/put/patch/delete` exist as a
+   second lever. **This may remove 06-04's voice-latency concern entirely** — evaluate it there
+   before designing around a latency problem that may not exist. Note that the synchronous path is
+   already fast: ten signed HTTP calls in one invocation took 3.56 s, against a real `record_claim`
+   of 1 `GET` + 2 `PUT`s.
 
 ### Plan-close assertions
 
