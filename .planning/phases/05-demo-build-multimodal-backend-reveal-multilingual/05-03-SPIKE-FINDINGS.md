@@ -7,7 +7,7 @@ Three answers downstream plans read by name. Headings below are literal and grep
 
 | Heading | Read by | Answer |
 |---|---|---|
-| `## LANGUAGE_SWITCH_VERDICT` | 05-08, 05-09 | `LOCKS_AT_FIRST_UTTERANCE` |
+| `## LANGUAGE_SWITCH_VERDICT` | 05-08, 05-09 | ~~`LOCKS_AT_FIRST_UTTERANCE`~~ → **`FOLLOWS_WHEN_INSTRUCTED`** (corrected 2026-08-13, task 260813-nnm — the observation held, the attribution was wrong; read the correction block in that section before using this) |
 | `## VOICE_BASELINE` | 05-05, 05-07, 05-10 | `draft_equals_v11: true` |
 | `## PACKET_RECIPIENT` | 05-04, 05-05, 05-07 | `same-mailbox` — user decision 2026-08-11, supersedes `verify-domain`. Both emails → `akash.vinayak@nerdery.com`, assessor packet prefixed `[ASSESSOR]`. `from` stays `onboarding@resend.dev`. **No external blocker.** |
 | `## RICH_CONTENT_SPANISH` | 05-08 | **UNRESOLVED** — not answerable within this plan's budget |
@@ -20,7 +20,50 @@ still serves v11 `b17c9a26`. Every live conversation ran against the DRAFT app w
 
 ## LANGUAGE_SWITCH_VERDICT
 
-LOCKS_AT_FIRST_UTTERANCE
+~~LOCKS_AT_FIRST_UTTERANCE~~
+
+**FOLLOWS_WHEN_INSTRUCTED**
+
+> ### ⚠️ CORRECTED 2026-08-13 by quick task 260813-nnm — read this before acting on anything below
+>
+> **The observation recorded in this section is correct and was reproduced on voice. The
+> attribution and the verdict token were wrong.**
+>
+> This section's ⚠ NOT VERIFIED note below offered two readings of the same evidence: (a) the first
+> utterance sets the language, or (b) *"the app simply always answers in `defaultLanguageCode`
+> regardless"*, and warned that under (b) **the two-conversation fallback does not work either.**
+> 260813-nnm ran the cheap probe this section asked for — on **voice**, opening in Spanish — and
+> **(b) is the correct reading.** Nothing locks at the first utterance. The response language was
+> never a function of the utterance at all.
+>
+> | Probe (voice draft, TEXT/API, identical Spanish opener) | `spanish_markers` | `english_stopwords` |
+> |---|---|---|
+> | as-found (no `supportedLanguageCodes`, no `enableMultilingualSupport`) | 0 | 3 |
+> | **+ this section's exact `languageSettings` applied** | **0** | 5 |
+> | + a follow-the-caller block in `globalInstruction` | **7** | **0** |
+>
+> **The middle row is the correction.** Applying the very `languageSettings` this section proved
+> settable changed nothing about the output language. `enableMultilingualSupport` governs **input**
+> and declares the synthesis surface; it does not select the response language. **The response
+> language is governed by the instruction, and by nothing else reachable through configuration.**
+> Instructed to follow the caller, the agent follows from the first word — hence
+> `FOLLOWS_WHEN_INSTRUCTED`.
+>
+> **Also disproven: the suspicion that this spike measured a prompt, not the platform.** 260813-nnm
+> searched every instruction body, tool description and guardrail on **both** apps, live and in the
+> deployed snapshots. **There is no English-only clause on either channel and there never was.**
+> The *"I can only speak English"* sentence heard on a live Spanish phone call was emergent from
+> the monolingual `languageSettings` on voice, not authored anywhere.
+>
+> **What downstream plans should now do:**
+> - **Do NOT** treat the two-back-to-back-calls fallback as the only option — it would have failed for the same reason a mid-call switch did.
+> - **Do NOT** rely on configuration alone for any Spanish beat on any channel.
+> - The **mid-call EN→ES switch is once again an open question**, not a closed negative. It is now plausible (the shipped voice instruction explicitly tells the agent to switch mid-conversation) but **still untested**. One 2-turn probe settles it. Do not script it as a demo beat until someone runs that probe.
+> - The instruction-level fix is **already live on voice** in v14 `5d02f14c` (app-level `globalInstruction`, so it governs all three agents). Chat `a2f621e4` has **not** received it.
+>
+> Full evidence: `.planning/quick/260813-nnm-remove-the-english-only-clause-and-enabl/260813-nnm-SUMMARY.md`
+
+**Original 2026-08-10 record, retained unedited so the reversal is visible:**
 
 | Field | Value |
 |---|---|
