@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | `cdca14e3-5b0e-4675-9861-f5f22736362f` — *chat v14, the customer's photo attached to the assessor packet, the send-away line and customer email no longer ask for a photo already sent, and the cross-sell protected from the new closing wording* (supersedes v13 `1eb3fd5c` packet currency + `[CHAT]` token, v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v14**) |
-| Roll back to | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` — chat v13. Loses the photo attachment and re-introduces asking the customer for a photo they already sent, but is the last version watched end to end before v14. See *If something goes wrong (chat)* below. |
+| Version live | `129f8b31-f06e-48cc-90fb-15dcf8611db1` — *chat v15, every resolved claim written to the shared claim store on the decision turn, and a verified customer can have the status of an earlier claim read back to them* (supersedes v14 `cdca14e3` photo attachment, v13 `1eb3fd5c` packet currency + `[CHAT]` token, v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v15**) |
+| Roll back to | `cdca14e3-5b0e-4675-9861-f5f22736362f` — chat v14. Loses only the claim-status beat; every other beat is byte-identical. See *If something goes wrong (chat)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -440,6 +440,25 @@ a different device or a smaller policy.
 
 ## Presenter notes
 
+**NEW BEAT — "where has my claim got to?"** (chat, v15 `129f8b31`, 2026-08-13)
+Every claim resolved on chat is now written to a shared claim store the moment it is priced.
+So you can **file a claim, close the chat, open a fresh one, and ask about it** — the agent
+verifies you, then reads the claim back with its reference, device, amount, excess and filing
+date. Two things to know before you run it:
+
+- **Identify by name and policy ID, exactly as you would for a new claim. Never read a claim
+  reference out.** The agent is deliberately built not to ask for one, because reference
+  numbers do not survive speech-to-text. If you *volunteer* one it will use it, but it is a
+  bonus path, not the way in.
+- **`PDP100294` carries several claims, so the agent will ask which one you mean.** That is
+  the designed behaviour, not a stumble — answer naturally (*"the older one"*, *"the laptop
+  one"*, *"the one from June"*) and it resolves. If you want a single clean answer with no
+  disambiguation, use **`PDP100583` / Maria Santos**, which has exactly one claim on file.
+- Every figure in that sentence is composed in code, not by the model, and an unknown or
+  wrong-policy reference gets a flat *"I can't find a claim with that reference on this
+  policy"* with **no figure of any kind** — the agent will not invent a claim. That refusal is
+  worth showing deliberately if anyone asks about hallucination.
+
 **Send the photo when it asks for it, not after the decision.** (chat, v14 `cdca14e3`)
 The photo is attachable only on the turn it arrives, and the customer's confirmation email is
 written the moment the claim is priced. Upload it when prompted — or, if you are volunteering
@@ -525,15 +544,16 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
-**Roll back the chat deployment to v13 `1eb3fd5c`** — the last version watched end to end
-before v14. You lose the photo attachment on the assessor packet, and the agent goes back to
-asking the customer to email in a photo they just uploaded. One call:
+**Roll back the chat deployment to v14 `cdca14e3`** — the version live before v15. You lose
+only the claim-status beat (the agent can no longer read an earlier claim back, and resolved
+claims stop being written to the store); every other beat, including the photo attachment, is
+byte-identical. One call:
 
 ```bash
 curl -X PATCH \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "Content-Type: application/json" \
-  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/1eb3fd5c-5aff-46c8-b572-e3fe18bf966f"}' \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/cdca14e3-5b0e-4675-9861-f5f22736362f"}' \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
 ```
 
@@ -596,19 +616,14 @@ curl -X PATCH \
 
 Then **reload `http://localhost:3000`** so the widget picks the version up.
 
-> **⚠ The chat DRAFT is ahead of v13 and has never been cut into a version** (quick task
-> `260812-o5l`, 2026-08-12). It carries the photo attachment on the assessor packet and the
-> photo-redundancy fix — so the draft no longer asks a customer to email in a photo they just
-> uploaded. **Two canaries held the gate**: `cover_offer_actions` did not fire on the approve
-> run, and the live escalated packet went out with no attachment because the agent called
-> `assess_screen_crack` two turns after the upload. **Anyone cutting a chat version from the
-> draft will ship all of that** — re-run both canaries first. Nothing below is affected: the
-> deployment still serves v13.
+> **✅ Resolved.** That draft became v14 `cdca14e3` (2026-08-13), and v15 `129f8b31` now
+> supersedes it. The chat draft and the deployment are in step: `d7bfbb93` serves v15.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v14** | `cdca14e3-5b0e-4675-9861-f5f22736362f` | **Current.** The customer's uploaded photo is attached to the assessor packet as a real file; the spoken send-away line and the customer email both stop asking for a photo already sent; `assess_screen_crack`'s callback gate re-keyed so a photo volunteered mid-diagnostic is still capturable; the AUTO_APPROVE send-away turn can no longer close the call and kill the cross-sell |
-| **v13** | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | **Roll back to this.** Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
+| **v15** | `129f8b31-f06e-48cc-90fb-15dcf8611db1` | **Current.** Every resolved claim is written to the shared claim store on the decision turn, on both branches, and a verified customer can ask for the status of a claim filed in an earlier session and have it read back. Nothing the customer sees on any existing beat changed — the full v14 canary set was re-run green before this shipped |
+| **v14** | `cdca14e3-5b0e-4675-9861-f5f22736362f` | **Roll back to this.** The customer's uploaded photo is attached to the assessor packet as a real file; the spoken send-away line and the customer email both stop asking for a photo already sent; `assess_screen_crack`'s callback gate re-keyed so a photo volunteered mid-diagnostic is still capturable; the AUTO_APPROVE send-away turn can no longer close the call and kill the cross-sell. Losing v15 costs only the claim-status beat |
+| v13 | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
 | v12 | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close actually fire |
 | v11 | `838b6d2b-1e9f-44f8-b319-941c3e4ea10b` | **Never deployed. Do not roll onto it.** Cut mid-task; files the packet on the right turn but the agent says *nothing* to the customer on that turn |
 | v10 | `658472a0-05be-4a28-9d9f-9774ebe0dd05` | Assessor briefing packet, but on the turn *after* the email — needs one extra customer message or nothing is filed |
