@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | `be4c83bb-825a-4feb-af88-379113543aa7` — *chat v16, **a photo is asked for on every claim and every resolved claim files a photo-carrying record email***, subjects split into `[RECORD] [CHAT] … - APPROVED` and `[ASSESSOR] [CHAT] …` (supersedes v15 `129f8b31` claim store + status lookup, v14 `cdca14e3` photo attachment, v13 `1eb3fd5c` packet currency + `[CHAT]` token, v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v16**) |
-| Roll back to | `129f8b31-f06e-48cc-90fb-15dcf8611db1` — chat v15. Loses the photo-on-every-claim ask and the `[RECORD]` record email; every other beat is byte-identical. See *If something goes wrong (chat)* below. |
+| Version live | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` — **voice v16, *the call opens with a greeting and "how can I help you today?"* instead of demanding identity** (2026-08-13, quick task `260813-tgq`). Supersedes v15 `17b2e438` (language follows the caller across the agent handoff), v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet on the phone), v11 `b17c9a26` (no self-narration). |
+| Roll back to | `17b2e438-b132-49f1-8b32-190b132225ae` — voice v15. Loses only the new opening; the caller is asked for name and policy ID immediately again. Every other beat is byte-identical. See *If something goes wrong (phone)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -40,12 +40,20 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `5d9df25c…`. Anything else and the email may go elsewhere — see the version table
+> Expect `09a1f14d…`. Anything else and the email may go elsewhere — see the version table
 > at the bottom.
 >
-> ⚠ **NOT YET CONFIRMED BY EAR.** v13 was proven end to end over the API — packet composed,
-> Resend HTTP 200, nothing about it spoken — but **nobody has made a phone call on it.**
-> See *The briefing packet on the phone* under Scenario B for the one check that closes this.
+> ⚠ **NOT YET CONFIRMED BY EAR.** Everything since v13 was proven end to end over the API —
+> the new opening, the Spanish call, the language fix at the handoff, the packet, Resend
+> HTTP 200 — but **nobody has dialled the number since v13.** How the greeting *sounds*, and
+> whether the Spanish voice sounds Spanish, cannot be established from a conversation record.
+>
+> ⚠ **DO NOT SCRIPT A BEAT AROUND AN EMAIL ARRIVING.** The user's inbox check on 2026-08-13
+> found that **only about two of seven test emails arrived** — roughly a **30% delivery
+> rate** — against seven consecutive Resend HTTP 200s. Acceptance is not delivery. The cause
+> is almost certainly the unverified shared sender `onboarding@resend.dev`. **Say the email
+> is on its way; do not open a mailbox on stage to prove it.** The fix is a verified sending
+> domain at resend.com/domains — an account action, not a code change. Check spam.
 >
 > **Only one mailbox can receive.** The sender is Resend's shared `onboarding@resend.dev`,
 > which on a free account delivers **only to the address that owns the Resend account**.
@@ -54,18 +62,46 @@ appendix and this runbook matches what actually happens on the line.
 > at resend.com/domains and change the `from` address to it.
 
 The agent answers as **Alex**, for the carrier **Meridian Device Protection**.
-English only. Chat/photo upload is **not** part of this demo — it's a phone call.
+Chat/photo upload is **not** part of this demo — it's a phone call.
+
+**Not English only any more.** Since voice v14 the phone agent follows the caller's language, and
+since v15 it keeps following it across the handoff to claim handling. Opening the call in Spanish
+works end to end, greeting included — re-verified on v16: *"Hola, bienvenido a Meridian Device
+Protection. Mi nombre es Alex. ¿Cómo puedo ayudarle hoy?"* **Two caveats, both firm:** the
+deterministic strings (the decision sentence and the customer email) are still English, and
+**switching language mid-claim does not work and must not be scripted as a beat** — it works at the
+handoff and only at the handoff.
 
 ---
+
+> ### NEW — the agent no longer opens by demanding your identity
+> **Voice v16 `09a1f14d` / chat v17 `64be15eb` (2026-08-13, quick task `260813-tgq`).** Both
+> channels now open with a greeting and an open question, and ask who you are only *after* you
+> have said what you want:
+>
+> > **Agent:** Hello, you're through to Meridian Device Protection. I'm Alex. How can I help you today?
+> > **You:** I need to file a claim.
+> > **Agent:** Of course — could I take your full name and your policy ID?
+>
+> **Let it ask.** Say *"Hi there"* or *"Hello"* first and let the greeting land — it is a better
+> first impression than being interrogated, and it is the beat the change exists to produce.
+> If you volunteer everything in one breath it will still skip straight to verifying you and
+> **will not** make you repeat yourself, but you lose the beat. **On the escalation run,
+> volunteering everything at once is actively harmful — see Scenario B.**
 
 ## Scenario A — auto-approve  *(the main run)*
 
 | You say | Agent should |
 |---|---|
-| *"Hi, my name is Jordan Rivera and my policy is P D P one zero zero two nine four"* | Verify, then put you through to claim handling |
+| *"Hi there"* | **Greet you and ask how it can help** — no request for details yet |
+| *"I need to file a claim"* | Ask for your full name and policy ID, in one question |
+| *"Jordan Rivera, policy P D P one zero zero two nine four"* | Verify, then put you through to claim handling |
 | *"I dropped my laptop and the screen is cracked. No liquid, and it still switches on and works normally otherwise."* | Price it and approve on the spot |
 | *"Okay that works for me"* | Confirm the email is on its way |
-| *"No thanks"* | Close warmly |
+| *"That's everything, thanks"* | Offer the cross-sell, then close warmly |
+
+> Say *"That's everything, thanks"* rather than *"No thanks"* on the last turn. *"No thanks"*
+> reads as a refusal and can close the session **before** the cross-sell arrives.
 
 **What lands:** screen replacement **$840**, under the **$1,500** it can approve on the
 spot, excess **$25**, reference **CLM-24xxx**. A real email arrives at
@@ -80,8 +116,19 @@ each one — don't talk over the pause.
 
 | You say | Agent should |
 |---|---|
-| *"Hello, this is Jordan Rivera, policy PDP100294"* | Verify and put you through |
+| *"Hi there"* | Greet you and ask how it can help |
+| *"I need to file a claim"* | Ask for your full name and policy ID |
+| *"Jordan Rivera, policy PDP100294"* | Verify and put you through |
 | *"I spilled a full glass of water on my MacBook and now it won't turn on at all"* | Call it a total loss and route to a human |
+| *"Okay"* | **Speak the send-away line**, then file the case and close |
+
+> ### ⚠ On the escalation run, do NOT open by volunteering everything at once
+> *"Hi, I'm Jordan Rivera, policy PDP100294, I spilled water on my MacBook"* in one breath works
+> — you are verified immediately and not asked to repeat yourself — **but it collapses the rest
+> of the call onto a single turn, and that turn goes silent.** The case gets filed, the
+> specialist gets the packet, the session closes, and **the agent says nothing at all** while it
+> happens. Verified as a **pre-existing** behaviour (it does the same on the previous build), not
+> a regression, but it is ugly in front of a room. **Use the four separate turns above.**
 
 **What lands:** **$3,000** total loss, rules **DL-3** (total loss always escalates) and
 **DL-2** (over the limit), routed to a specialist with the case already packaged. Email
@@ -167,8 +214,8 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` — *chat v13, packet currency as whole dollars and a `[CHAT]` subject token* (supersedes v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v13**) |
-| Roll back to | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` — chat v12, identical behaviour except the packet's raw-float money and the missing channel token. See *If something goes wrong (chat)* below. |
+| Version live | `64be15eb-947f-4f36-8af2-2aefd225742b` — **chat v17, *the chat opens with a greeting and "how can I help you today?"* instead of demanding identity** (2026-08-13, quick task `260813-tgq`). Supersedes v16 `be4c83bb` (photo on every claim + `[RECORD] [CHAT]` record email), v15 `129f8b31` (claim store + status lookup), v14 `cdca14e3` (photo attached to the packet), v13 `1eb3fd5c`, v12 `26c3aebd`, v10 `658472a0`, v9 `160dc3b2`, v8 `3f85b1d8`, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v17** |
+| Roll back to | `be4c83bb-825a-4feb-af88-379113543aa7` — chat v16. Loses only the new opening; the agent demands your full name and policy ID as its first words again. Every other beat is byte-identical. See *If something goes wrong (chat)* below. |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -203,13 +250,24 @@ photo of an **undamaged** laptop.
 
 | You type | Agent should |
 |---|---|
-| *"Hi, my name is Jordan Rivera and my policy is PDP100294"* | Verify and open with your MacBook |
+| *"Hi there"* | **Greet you and ask how it can help** — no request for details yet (new in chat v17 `64be15eb`) |
+| *"I need to file a claim"* | Ask for your full name and policy ID, in one question |
+| *"Jordan Rivera, policy PDP100294"* | Verify and open with your MacBook |
 | *"I dropped my laptop and the screen is cracked. No liquid, and it still switches on and works normally otherwise."* | **Ask for a photo** — it will not price anything first |
-| *(attach the cracked-screen photo)* | Describe what it can see, then approve |
+| *(attach the cracked-screen photo, **on its own turn, after it asks**)* | Describe what it can see, then approve |
 | *(the decision card draws)* | See below |
 | *"Okay that works"* | Confirm the email |
 | *"That's everything, thanks"* | **Offer to add the uninsured iPhone 16 Pro Max to cover, with two buttons** — the cross-sell beat |
 | *(tap **Add it** or **Not now**)* | Say it will send the options over — or accept the decline — then close warmly |
+
+> ### ⚠ Attach the photo ONLY when it asks, on its own turn
+> **Do not attach the cracked-screen photo in the same message that describes the damage.** If you
+> do, the agent tries to assess the image before it has classified the claim as a screen, its own
+> safety gate refuses the assessment, and the claim then **deadlocks** — it will keep asking for
+> "another photo" and never price anything. Verified as a **pre-existing** defect (it does the same
+> on chat v16, the previous build) and it is the top follow-up item. Two safe routes: attach the
+> photo **after** it asks for one, or run a **non-screen** fault (a dead keyboard), where the photo
+> is filed rather than assessed and the claim resolves normally at **$420**.
 
 **The moment to point at:** it says back what it actually sees — *"I can see the crack
 running from the lower left across the panel"* — before any decision. That line is the proof
@@ -563,14 +621,22 @@ curl -X PATCH \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments/d28bbcb0-066e-4127-a894-fbf9ba39789f?updateMask=appVersion"
 ```
 
-**The named rollback is v11 `b17c9a26-3485-4658-9259-dfa4839a7977`** — the build the phone
-served from 2026-08-05 to 2026-08-12. Rolling back costs the briefing packet on the phone and
-nothing else: the decision line, the tariff, the customer email, the cross-sell and barge-in are
-unchanged between v11 and v13. Substitute it for `<VERSION_ID>` above.
+**The named rollback is now voice v15 `17b2e438-b132-49f1-8b32-190b132225ae`** — the build the
+phone served immediately before 2026-08-14. Rolling back costs **only the new opening**: the agent
+goes back to demanding your full name and policy ID as its first words. The decision line, the
+tariff, the customer email, the cross-sell, the assessor packet, the Spanish support, the
+language-follows-the-caller fix at the handoff and barge-in are all **byte-identical** between v15
+and v16. Substitute it for `<VERSION_ID>` above.
+
+*(The older v11 `b17c9a26` rollback below is retained for history only. Do not roll back that far
+unless the packet itself is the problem — you would also lose Spanish and the handoff language fix.)*
 
 | Version | ID | Notes |
 |---|---|---|
-| **v13** | `5d9df25c-3771-45bb-bd20-b28978cc5955` | **Current.** Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
+| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Current.** The call opens with a greeting and *"how can I help you today?"*; the caller is asked for name and policy ID only after they say what they want, and is never made to repeat details they volunteered. 86/86 canaries green |
+| **v15** | `17b2e438-b132-49f1-8b32-190b132225ae` | **Roll back to this.** Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
+| v14 | `5d02f14c-8cba-4bf4-aa3a-b9caf57ffddc` | The phone agent speaks Spanish, following the caller from the first word. Conversational layer fully bilingual; the deterministic strings are still English |
+| v13 | `5d9df25c-3771-45bb-bd20-b28978cc5955` | Superseded. Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
 | v12 | `9227210b-e46b-41bd-af7d-59db48abb3a6` | **Never deployed. Do not roll onto it.** Cut mid-plan; its packet mailer throws on every send (unsupported `timeout` argument) so no assessor email is ever delivered |
 | **v11** | `b17c9a26-3485-4658-9259-dfa4839a7977` | **Roll back to this.** No self-narration; no packet |
 | v10 | `6ec881a1-081f-4859-8edb-4329d801c3d8` | Liquid-ingress disambiguation |
@@ -602,16 +668,17 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
-**Roll back the chat deployment to v14 `cdca14e3`** — the version live before v15. You lose
-only the claim-status beat (the agent can no longer read an earlier claim back, and resolved
-claims stop being written to the store); every other beat, including the photo attachment, is
-byte-identical. One call:
+**Roll back the chat deployment to v16 `be4c83bb`** — the version live before v17. You lose
+**only the new opening**: the agent goes back to demanding your full name and policy ID as its
+first words. The photo-on-every-claim ask, the `[RECORD] [CHAT]` record email, the claim store,
+the status lookup, the decision card and the cross-sell are all **byte-identical** between v16 and
+v17. One call:
 
 ```bash
 curl -X PATCH \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "Content-Type: application/json" \
-  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/cdca14e3-5b0e-4675-9861-f5f22736362f"}' \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/be4c83bb-825a-4feb-af88-379113543aa7"}' \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
 ```
 
@@ -628,7 +695,10 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v13** | `5d9df25c-3771-45bb-bd20-b28978cc5955` | **Current.** Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
+| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Current.** The call opens with a greeting and *"how can I help you today?"*; the caller is asked for name and policy ID only after they say what they want, and is never made to repeat details they volunteered. 86/86 canaries green |
+| **v15** | `17b2e438-b132-49f1-8b32-190b132225ae` | **Roll back to this.** Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
+| v14 | `5d02f14c-8cba-4bf4-aa3a-b9caf57ffddc` | The phone agent speaks Spanish, following the caller from the first word. Conversational layer fully bilingual; the deterministic strings are still English |
+| v13 | `5d9df25c-3771-45bb-bd20-b28978cc5955` | Superseded. Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
 | v12 | `9227210b-e46b-41bd-af7d-59db48abb3a6` | **Never deployed. Do not roll onto it.** Cut mid-plan; its packet mailer throws on every send (unsupported `timeout` argument) so no assessor email is ever delivered |
 | **v11** | `b17c9a26-3485-4658-9259-dfa4839a7977` | **Roll back to this.** No self-narration; no packet |
 | v10 | `6ec881a1-081f-4859-8edb-4329d801c3d8` | Liquid-ingress disambiguation |
@@ -679,8 +749,10 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v15** | `129f8b31-f06e-48cc-90fb-15dcf8611db1` | **Current.** Every resolved claim is written to the shared claim store on the decision turn, on both branches, and a verified customer can ask for the status of a claim filed in an earlier session and have it read back. Nothing the customer sees on any existing beat changed — the full v14 canary set was re-run green before this shipped |
-| **v14** | `cdca14e3-5b0e-4675-9861-f5f22736362f` | **Roll back to this.** The customer's uploaded photo is attached to the assessor packet as a real file; the spoken send-away line and the customer email both stop asking for a photo already sent; `assess_screen_crack`'s callback gate re-keyed so a photo volunteered mid-diagnostic is still capturable; the AUTO_APPROVE send-away turn can no longer close the call and kill the cross-sell. Losing v15 costs only the claim-status beat |
+| **v17** | `64be15eb-947f-4f36-8af2-2aefd225742b` | **Current.** The chat opens with a greeting and *"how can I help you today?"*; identity is asked for only after the customer says what they want, and a customer who volunteers everything at once is never made to repeat it. 86/86 canaries green |
+| **v16** | `be4c83bb-825a-4feb-af88-379113543aa7` | **Roll back to this.** A photo is asked for on every chat claim, and every resolved claim files a photo-carrying record email — `[RECORD] [CHAT] … - APPROVED` on auto-approve, `[ASSESSOR] [CHAT] …` on escalation |
+| v15 | `129f8b31-f06e-48cc-90fb-15dcf8611db1` | Superseded. Every resolved claim is written to the shared claim store on the decision turn, on both branches, and a verified customer can ask for the status of a claim filed in an earlier session and have it read back. Nothing the customer sees on any existing beat changed — the full v14 canary set was re-run green before this shipped |
+| v14 | `cdca14e3-5b0e-4675-9861-f5f22736362f` | The customer's uploaded photo is attached to the assessor packet as a real file; the spoken send-away line and the customer email both stop asking for a photo already sent; `assess_screen_crack`'s callback gate re-keyed so a photo volunteered mid-diagnostic is still capturable; the AUTO_APPROVE send-away turn can no longer close the call and kill the cross-sell. Losing v15 costs only the claim-status beat |
 | v13 | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
 | v12 | `26c3aebd-d72b-4ec5-861d-8a9fabb140cf` | Packet filed on the email-confirmation turn; send-away line still spoken; escalation and close actually fire |
 | v11 | `838b6d2b-1e9f-44f8-b319-941c3e4ea10b` | **Never deployed. Do not roll onto it.** Cut mid-task; files the packet on the right turn but the agent says *nothing* to the customer on that turn |
