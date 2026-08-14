@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | `129f8b31-f06e-48cc-90fb-15dcf8611db1` — *chat v15, every resolved claim written to the shared claim store on the decision turn, and a verified customer can have the status of an earlier claim read back to them* (supersedes v14 `cdca14e3` photo attachment, v13 `1eb3fd5c` packet currency + `[CHAT]` token, v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v15**) |
-| Roll back to | `cdca14e3-5b0e-4675-9861-f5f22736362f` — chat v14. Loses only the claim-status beat; every other beat is byte-identical. See *If something goes wrong (chat)* below. |
+| Version live | `be4c83bb-825a-4feb-af88-379113543aa7` — *chat v16, **a photo is asked for on every claim and every resolved claim files a photo-carrying record email***, subjects split into `[RECORD] [CHAT] … - APPROVED` and `[ASSESSOR] [CHAT] …` (supersedes v15 `129f8b31` claim store + status lookup, v14 `cdca14e3` photo attachment, v13 `1eb3fd5c` packet currency + `[CHAT]` token, v12 `26c3aebd` same-turn filing, v10 `658472a0` packet, v9 `160dc3b2` spoken decision, v8 `3f85b1d8` cross-sell buttons, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v16**) |
+| Roll back to | `129f8b31-f06e-48cc-90fb-15dcf8611db1` — chat v15. Loses the photo-on-every-claim ask and the `[RECORD]` record email; every other beat is byte-identical. See *If something goes wrong (chat)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -184,6 +184,23 @@ photo of an **undamaged** laptop.
 
 ## Scenario C — photo confirms the damage  *(the main chat run)*
 
+> **New in chat v16 `be4c83bb` (2026-08-13): the photo beat is no longer exclusive to this
+> scenario.** The agent now asks for a photo on **every** chat claim — a total loss and a liquid
+> spill get the ask too, in the same turn it acknowledges the loss. On those claims the photo is
+> **filed, not assessed**: a separate tool puts it on the claim record and the agent says only
+> *"thanks, I've got that on the file."* It never describes a photo it has not assessed, and the
+> vision assessor is refused in code on anything that is not a cracked screen — a dead or submerged
+> device has no crack to see, and a model asked to find one will invent it. **Only this scenario
+> produces the "I can see the crack running across the panel" moment.**
+>
+> **And every resolved chat claim now leaves a photo-carrying artifact behind** — see *The record
+> email* below. Before v16 an approved claim's photo drove the decision and was then discarded.
+>
+> **A customer with no photo is never blocked.** One ask, and if they decline or just answer the
+> next question, the claim proceeds and resolves identically — same tariff, same card, same email.
+> If a presenter wants the short path, decline the photo and nothing is lost.
+
+
 | You type | Agent should |
 |---|---|
 | *"Hi, my name is Jordan Rivera and my policy is PDP100294"* | Verify and open with your MacBook |
@@ -304,12 +321,24 @@ six-section **assessor briefing packet** and sends it as a **second, separate em
 specialist's handover, composed from the session's own recorded facts. The customer never sees
 it, is never told about it, and hears nothing different.
 
-**Two emails land for one escalated claim, and they are told apart by the subject line:**
+**Since chat v16 `be4c83bb` (2026-08-13) this happens on EVERY resolved chat claim, not only the
+escalated ones** — so two emails land for every claim, and the subject line says which kind it is
+without opening it:
 
 | | Subject | Who it is for |
 |---|---|---|
 | Customer confirmation | `Claim CLM-24xxx - please reply with photos`, or — when the customer already uploaded one — `Claim CLM-24xxx - photo received, nothing needed` | the customer |
-| **Briefing packet** | **`[ASSESSOR] [CHAT] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
+| **Record, auto-approved claim** | **`[RECORD] [CHAT] CLM-24xxx - Jordan Rivera - APPROVED`** | the file. **New in v16** — before this, an approved claim left no record and no photo |
+| **Briefing packet, escalated claim** | **`[ASSESSOR] [CHAT] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
+
+`[ASSESSOR]` still means *a person must act on this*, which is why its subject is unchanged from
+every packet already in the mailbox. **The token that selects the whole corpus is the channel one,
+`[CHAT]` / `[VOICE]`**, which is on both forms — that is the stable filter for a downstream agent
+reviewing claim photos against a policy document. Both kinds carry the customer's photo as a real
+attachment when one was given, and both carry a `PHOTO: attached` / `PHOTO: not provided` line
+computed by the mailer itself, so it cannot claim an attachment that is not there.
+
+**Voice is unchanged** — it is audio-only and still asks for photos by email reply.
 
 **The photo the customer uploaded is attached to the packet as a real file** (new in v14
 `cdca14e3`, 2026-08-13), named `CLM-24xxx-damage.png`. Open it on screen: the specialist gets
