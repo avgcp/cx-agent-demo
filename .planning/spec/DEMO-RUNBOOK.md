@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` — **voice v16, *the call opens with a greeting and "how can I help you today?"* instead of demanding identity** (2026-08-13, quick task `260813-tgq`). Supersedes v15 `17b2e438` (language follows the caller across the agent handoff), v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet on the phone), v11 `b17c9a26` (no self-narration). |
-| Roll back to | `17b2e438-b132-49f1-8b32-190b132225ae` — voice v15. Loses only the new opening; the caller is asked for name and policy ID immediately again. Every other beat is byte-identical. See *If something goes wrong (phone)* below. |
+| Version live | `dcc20863-3746-4e43-a2c9-ed30e0611479` — **voice v17, *the call ACTUALLY opens with the greeting now*** (2026-08-13, quick task `260813-ui0`). v16 rewrote the instruction but a `beforeModelCallback` hard-returned the old identity demand on the phone, so **v16's opener was never heard on a real call**. Supersedes v16 `09a1f14d` (the instruction change), v15 `17b2e438` (language follows the caller across the agent handoff), v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet on the phone), v11 `b17c9a26` (no self-narration). |
+| Roll back to | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` — voice v16. **Loses only the opening line** — the call goes back to demanding your full name and policy ID as its first words. Every other beat is byte-identical (same instruction, same nine tools, same config). See *If something goes wrong (phone)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -40,13 +40,29 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `09a1f14d…`. Anything else and the email may go elsewhere — see the version table
+> Expect `dcc20863…`. Anything else and the email may go elsewhere — see the version table
 > at the bottom.
 >
-> ⚠ **NOT YET CONFIRMED BY EAR.** Everything since v13 was proven end to end over the API —
-> the new opening, the Spanish call, the language fix at the handoff, the packet, Resend
-> HTTP 200 — but **nobody has dialled the number since v13.** How the greeting *sounds*, and
-> whether the Spanish voice sounds Spanish, cannot be established from a conversation record.
+> **Faster and better: just listen to the first sentence.** The opening line is now a
+> deterministic literal, so it is a one-second version check by ear. If the call opens
+> *"…To pull up your policy, could I take your full name and your policy ID?"* you are on
+> **v16 or older**, whatever the deployment says.
+>
+> ⚠ **NOT YET CONFIRMED BY EAR — and the last call that WAS made found a real defect.** Everything
+> since v13 was proven end to end over the API — the new opening, the Spanish call, the language fix
+> at the handoff, the packet, Resend HTTP 200 — but the only real call since then, on
+> 2026-08-14, opened with the **old** identity demand and is what produced `260813-ui0`. That is now
+> fixed and re-proven on the deployed build, **but nobody has dialled v17.** Three things need an ear:
+>
+> 1. **The first sentence** must be *"Hello, you're connected to Meridian Device Protection. I'm
+>    Alex. How can I help you today?"* — then **answer with what you want, not your name**; identity
+>    should be asked for once, after that, never before and never twice.
+> 2. **Hang up mid-call.** The call should close cleanly — that branch is separate code and must
+>    still work.
+> 3. **Say nothing for ~10–15 seconds** after the greeting. You should hear *"Are you still there?"*
+>
+> How the greeting *sounds*, and whether the Spanish voice sounds Spanish, still cannot be
+> established from a conversation record.
 >
 > ⚠ **DO NOT SCRIPT A BEAT AROUND AN EMAIL ARRIVING.** The user's inbox check on 2026-08-13
 > found that **only about two of seven test emails arrived** — roughly a **30% delivery
@@ -66,22 +82,41 @@ Chat/photo upload is **not** part of this demo — it's a phone call.
 
 **Not English only any more.** Since voice v14 the phone agent follows the caller's language, and
 since v15 it keeps following it across the handoff to claim handling. Opening the call in Spanish
-works end to end, greeting included — re-verified on v16: *"Hola, bienvenido a Meridian Device
-Protection. Mi nombre es Alex. ¿Cómo puedo ayudarle hoy?"* **Two caveats, both firm:** the
-deterministic strings (the decision sentence and the customer email) are still English, and
-**switching language mid-claim does not work and must not be scripted as a beat** — it works at the
-handoff and only at the handoff.
+works end to end. **Three caveats, all firm.** (1) The deterministic strings (the decision
+sentence and the customer email) are still English. (2) **Switching language mid-claim does not
+work and must not be scripted as a beat** — it works at the handoff and only at the handoff.
+(3) **The very first sentence of every call is English, always** — the greeting is a fixed
+literal that runs before the model, so nothing can localise it (`260813-ui0`). The agent then
+switches from the caller's first real utterance and stays switched, handoff included, verified
+end to end:
+
+> **Agent:** Hello, you're connected to Meridian Device Protection. I'm Alex. How can I help you today?
+> **Caller:** Hola, buenos días. Necesito presentar una reclamación, se me cayó el portátil.
+> **Agent:** Siento mucho escuchar eso, pero puedo ayudarle. ¿Me podría decir su nombre completo y su número de póliza?
+
+**Script this as "watch it switch," not "it answers in Spanish from hello."** An earlier note in
+this runbook promised a Spanish *greeting* (*"Hola, bienvenido a Meridian Device Protection…"*);
+that was measured over the API without a real session-start event and **is not what a caller
+hears**. Switching on the caller's first sentence is the better beat anyway — the audience sees
+the change happen.
 
 ---
 
 > ### NEW — the agent no longer opens by demanding your identity
-> **Voice v16 `09a1f14d` / chat v17 `64be15eb` (2026-08-13, quick task `260813-tgq`).** Both
-> channels now open with a greeting and an open question, and ask who you are only *after* you
-> have said what you want:
+> **Voice v17 `dcc20863` / chat v18 `d0e4bfef` (2026-08-13, quick tasks `260813-tgq` + `260813-ui0`).**
+> Both channels now open with a greeting and an open question, and ask who you are only *after*
+> you have said what you want. **The opening sentence is a fixed literal — it is word-for-word
+> identical on every call and in every chat session:**
 >
-> > **Agent:** Hello, you're through to Meridian Device Protection. I'm Alex. How can I help you today?
+> > **Agent:** Hello, you're connected to Meridian Device Protection. I'm Alex. How can I help you today?
 > > **You:** I need to file a claim.
 > > **Agent:** Of course — could I take your full name and your policy ID?
+>
+> > **⚠ If you presented between tgq and ui0, you did not get this.** v16/v17 changed the
+> > *instruction*, but a callback was still hard-returning the old *"To pull up your policy, could
+> > I take your full name and your policy ID?"* on the real channels — and on **chat** it then
+> > asked a second time. Only **voice v17 `dcc20863` / chat v18 `d0e4bfef`** actually deliver the
+> > new opener. The line above is the version check: if you hear the old one, you are on an old build.
 >
 > **Let it ask.** Say *"Hi there"* or *"Hello"* first and let the greeting land — it is a better
 > first impression than being interrogated, and it is the beat the change exists to produce.
@@ -214,8 +249,8 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `64be15eb-947f-4f36-8af2-2aefd225742b` — **chat v17, *the chat opens with a greeting and "how can I help you today?"* instead of demanding identity** (2026-08-13, quick task `260813-tgq`). Supersedes v16 `be4c83bb` (photo on every claim + `[RECORD] [CHAT]` record email), v15 `129f8b31` (claim store + status lookup), v14 `cdca14e3` (photo attached to the packet), v13 `1eb3fd5c`, v12 `26c3aebd`, v10 `658472a0`, v9 `160dc3b2`, v8 `3f85b1d8`, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v17** |
-| Roll back to | `be4c83bb-825a-4feb-af88-379113543aa7` — chat v16. Loses only the new opening; the agent demands your full name and policy ID as its first words again. Every other beat is byte-identical. See *If something goes wrong (chat)* below. |
+| Version live | `d0e4bfef-6d5f-43b3-b490-3d9036d030e2` — **chat v18, *the widget's first message ACTUALLY greets you now*** (2026-08-13, quick task `260813-ui0`). v17 rewrote the instruction but a callback still hard-returned the identity demand as the widget's opening message **and the agent then asked a second time** — so v17's opener was never seen by a user. Supersedes v17 `64be15eb` (the instruction change), v16 `be4c83bb` (photo on every claim + `[RECORD] [CHAT]` record email), v15 `129f8b31` (claim store + status lookup), v14 `cdca14e3` (photo attached to the packet), v13 `1eb3fd5c`, v12 `26c3aebd`, v10 `658472a0`, v9 `160dc3b2`, v8 `3f85b1d8`, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v18** |
+| Roll back to | `64be15eb-947f-4f36-8af2-2aefd225742b` — chat v17. **Loses only the opening message** — the widget goes back to demanding your full name and policy ID as its first words, and then asking again. Every other beat is byte-identical (same instruction, same 13 tools, same config). See *If something goes wrong (chat)* below. |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -225,6 +260,16 @@ but the customer can show you the damage, which the phone run cannot do.
 > priced from the tariff at $840 and auto-approved as `CLM-24442` with the decision card
 > drawn on screen. Still worth one rehearsal with **your** photo, since accuracy depends on
 > the image.
+
+> ### Ten-second pre-flight — read the widget's FIRST message before you type
+> Open the widget and look at the opening message. It must be, word for word:
+>
+> > Hello, you're connected to Meridian Device Protection. I'm Alex. How can I help you today?
+>
+> If it says *"To pull up your policy, could I take your full name and your policy ID?"* you are
+> on **chat v17 or older** — and that build also asks a **second** time after you answer, which
+> reads badly in a room. Repoint to **v18 `d0e4bfef`**. This is the fastest version check there
+> is; it needs no terminal.
 
 **Have ready:** a clear photo of a cracked laptop screen, and — for the second beat — a
 photo of an **undamaged** laptop.
@@ -250,7 +295,7 @@ photo of an **undamaged** laptop.
 
 | You type | Agent should |
 |---|---|
-| *"Hi there"* | **Greet you and ask how it can help** — no request for details yet (new in chat v17 `64be15eb`) |
+| *"Hi there"* | **Greet you and ask how it can help** — no request for details yet. Actually, the widget greets you *before* you type anything; this row is your cue to answer it with what you want, not with your name (new in chat v18 `d0e4bfef`) |
 | *"I need to file a claim"* | Ask for your full name and policy ID, in one question |
 | *"Jordan Rivera, policy PDP100294"* | Verify and open with your MacBook |
 | *"I dropped my laptop and the screen is cracked. No liquid, and it still switches on and works normally otherwise."* | **Ask for a photo** — it will not price anything first |
@@ -584,14 +629,15 @@ Mitigations, in order of usefulness:
 transcription. The **authentication** path has no equivalent normalisation, which is why this still
 bites. Recorded as a demo risk, not yet fixed — see `260813-olv-SUMMARY.md`.)*
 
-**⚠ LANGUAGE: pick one language before you authenticate, and stay in it.** *(phone, live v14
-`5d02f14c`, 2026-08-13.)* Spanish works end to end — greeting, identity, handoff, decision,
-send-away and cross-sell — **provided the caller does not change language mid-call**:
+**⚠ LANGUAGE: pick one language before you authenticate, and stay in it.** *(phone, live v17
+`dcc20863`, 2026-08-13.)* Spanish works end to end — identity, handoff, decision, send-away and
+cross-sell — **provided the caller does not change language mid-call**, and provided you expect
+the **opening sentence to be English** (it is a fixed literal; see the top of this runbook):
 
-- **Switching language BEFORE authentication completes is currently a call-killer on the live
-  build.** The agent resets to the language the call opened in at the moment it hands you to
-  claims, and will not come back. This is **fixed in voice v15 `17b2e438`, which is built and
-  versioned but NOT deployed** — check which version `d28bbcb0` is serving before you rely on it.
+- **Switching language before authentication completes used to be a call-killer.** The agent
+  reset to the language the call opened in at the moment it handed you to claims, and did not
+  come back. **Fixed in voice v15 `17b2e438` and carried forward into the live v17** — no longer
+  a hazard on the build that is serving.
 - **Switching language AFTER the handoff does not work on any build.** Do not script it. It is the
   one language beat that has never worked.
 - The demonstrable beats are **"the whole call in Spanish"** and, on v15, **"the caller starts in
@@ -621,20 +667,22 @@ curl -X PATCH \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments/d28bbcb0-066e-4127-a894-fbf9ba39789f?updateMask=appVersion"
 ```
 
-**The named rollback is now voice v15 `17b2e438-b132-49f1-8b32-190b132225ae`** — the build the
-phone served immediately before 2026-08-14. Rolling back costs **only the new opening**: the agent
-goes back to demanding your full name and policy ID as its first words. The decision line, the
-tariff, the customer email, the cross-sell, the assessor packet, the Spanish support, the
-language-follows-the-caller fix at the handoff and barge-in are all **byte-identical** between v15
-and v16. Substitute it for `<VERSION_ID>` above.
+**The named rollback is now voice v16 `09a1f14d-be24-40ba-abbd-a06e495f5d0d`** — the build the
+phone served immediately before the 2026-08-14 03:15 UTC repoint. Rolling back costs **only the
+opening line**: the call goes back to demanding your full name and policy ID as its first words.
+The decision line, the tariff, the customer email, the cross-sell, the assessor packet, the
+Spanish support, the language-follows-the-caller fix at the handoff and barge-in are all
+**byte-identical** between v16 and v17 — v17 changes 46 bytes inside one callback and nothing
+else. Substitute it for `<VERSION_ID>` above.
 
 *(The older v11 `b17c9a26` rollback below is retained for history only. Do not roll back that far
 unless the packet itself is the problem — you would also lose Spanish and the handoff language fix.)*
 
 | Version | ID | Notes |
 |---|---|---|
-| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Current.** The call opens with a greeting and *"how can I help you today?"*; the caller is asked for name and policy ID only after they say what they want, and is never made to repeat details they volunteered. 86/86 canaries green |
-| **v15** | `17b2e438-b132-49f1-8b32-190b132225ae` | **Roll back to this.** Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
+| **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Current.** The call ACTUALLY opens with the greeting. v16 changed the instruction but a `beforeModelCallback` hard-returned the old identity demand on the real phone leg, so v16's opener was never heard on a call. 93/93 canaries green |
+| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Roll back to this.** The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
+| v15 | `17b2e438-b132-49f1-8b32-190b132225ae` | Superseded. Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
 | v14 | `5d02f14c-8cba-4bf4-aa3a-b9caf57ffddc` | The phone agent speaks Spanish, following the caller from the first word. Conversational layer fully bilingual; the deterministic strings are still English |
 | v13 | `5d9df25c-3771-45bb-bd20-b28978cc5955` | Superseded. Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
 | v12 | `9227210b-e46b-41bd-af7d-59db48abb3a6` | **Never deployed. Do not roll onto it.** Cut mid-plan; its packet mailer throws on every send (unsupported `timeout` argument) so no assessor email is ever delivered |
@@ -668,17 +716,18 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
-**Roll back the chat deployment to v16 `be4c83bb`** — the version live before v17. You lose
-**only the new opening**: the agent goes back to demanding your full name and policy ID as its
-first words. The photo-on-every-claim ask, the `[RECORD] [CHAT]` record email, the claim store,
-the status lookup, the decision card and the cross-sell are all **byte-identical** between v16 and
-v17. One call:
+**Roll back the chat deployment to v17 `64be15eb`** — the version live before v18. You lose
+**only the opening message**: the widget goes back to demanding your full name and policy ID as
+its first words, and then asking a second time. The photo-on-every-claim ask, the
+`[RECORD] [CHAT]` record email, the claim store, the status lookup, the decision card and the
+cross-sell are all **byte-identical** between v17 and v18 — v18 changes 46 bytes inside one
+callback and nothing else. One call:
 
 ```bash
 curl -X PATCH \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "Content-Type: application/json" \
-  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/be4c83bb-825a-4feb-af88-379113543aa7"}' \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/64be15eb-947f-4f36-8af2-2aefd225742b"}' \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
 ```
 
@@ -695,8 +744,9 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Current.** The call opens with a greeting and *"how can I help you today?"*; the caller is asked for name and policy ID only after they say what they want, and is never made to repeat details they volunteered. 86/86 canaries green |
-| **v15** | `17b2e438-b132-49f1-8b32-190b132225ae` | **Roll back to this.** Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
+| **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Current.** The call ACTUALLY opens with the greeting. v16 changed the instruction but a `beforeModelCallback` hard-returned the old identity demand on the real phone leg, so v16's opener was never heard on a call. 93/93 canaries green |
+| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Roll back to this.** The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
+| v15 | `17b2e438-b132-49f1-8b32-190b132225ae` | Superseded. Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
 | v14 | `5d02f14c-8cba-4bf4-aa3a-b9caf57ffddc` | The phone agent speaks Spanish, following the caller from the first word. Conversational layer fully bilingual; the deterministic strings are still English |
 | v13 | `5d9df25c-3771-45bb-bd20-b28978cc5955` | Superseded. Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
 | v12 | `9227210b-e46b-41bd-af7d-59db48abb3a6` | **Never deployed. Do not roll onto it.** Cut mid-plan; its packet mailer throws on every send (unsupported `timeout` argument) so no assessor email is ever delivered |
@@ -749,8 +799,9 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v17** | `64be15eb-947f-4f36-8af2-2aefd225742b` | **Current.** The chat opens with a greeting and *"how can I help you today?"*; identity is asked for only after the customer says what they want, and a customer who volunteers everything at once is never made to repeat it. 86/86 canaries green |
-| **v16** | `be4c83bb-825a-4feb-af88-379113543aa7` | **Roll back to this.** A photo is asked for on every chat claim, and every resolved claim files a photo-carrying record email — `[RECORD] [CHAT] … - APPROVED` on auto-approve, `[ASSESSOR] [CHAT] …` on escalation |
+| **v18** | `d0e4bfef-6d5f-43b3-b490-3d9036d030e2` | **Current.** The widget's first message ACTUALLY greets you. v17 changed the instruction but a callback still hard-returned the identity demand as the opening message, and the agent then asked a SECOND time. 93/93 canaries green |
+| **v17** | `64be15eb-947f-4f36-8af2-2aefd225742b` | **Roll back to this.** The instruction that greets and asks *"how can I help you today?"* — but the widget still opened by demanding identity, twice. Everything except the opening message is byte-identical to v18 |
+| v16 | `be4c83bb-825a-4feb-af88-379113543aa7` | Superseded. A photo is asked for on every chat claim, and every resolved claim files a photo-carrying record email — `[RECORD] [CHAT] … - APPROVED` on auto-approve, `[ASSESSOR] [CHAT] …` on escalation |
 | v15 | `129f8b31-f06e-48cc-90fb-15dcf8611db1` | Superseded. Every resolved claim is written to the shared claim store on the decision turn, on both branches, and a verified customer can ask for the status of a claim filed in an earlier session and have it read back. Nothing the customer sees on any existing beat changed — the full v14 canary set was re-run green before this shipped |
 | v14 | `cdca14e3-5b0e-4675-9861-f5f22736362f` | The customer's uploaded photo is attached to the assessor packet as a real file; the spoken send-away line and the customer email both stop asking for a photo already sent; `assess_screen_crack`'s callback gate re-keyed so a photo volunteered mid-diagnostic is still capturable; the AUTO_APPROVE send-away turn can no longer close the call and kill the cross-sell. Losing v15 costs only the claim-status beat |
 | v13 | `1eb3fd5c-5aff-46c8-b572-e3fe18bf966f` | Packet money as whole dollars (`$3,000` / `$25`) and an `[ASSESSOR] [CHAT]` subject token. `claim_intake` is byte-identical to v12 — only the packet composer and the mailer's subject changed |
