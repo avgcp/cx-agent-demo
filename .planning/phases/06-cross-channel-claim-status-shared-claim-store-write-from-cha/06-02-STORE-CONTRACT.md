@@ -161,11 +161,58 @@ claim" depends on it.
 | `status_code` | the first non-2xx observed, else `200` |
 | `read_status` | status of the single `GET` of the policy object (`200` existing, `404` cold start) |
 | `by_policy_status` / `by_ref_status` | per-object PUT status; `0` means the call never completed |
-| `store_calls` | `3` on a full write (1 GET + 2 PUT). Fewer means it stopped early. |
+| `store_calls` | **`4` on a full write since 260814-80f** (1 pre-check GET + 1 read GET + 2 PUT). Was `3` before. Fewer means it stopped early. |
+| `precheck_status` | **added 260814-80f.** Status of the `GET` of `claims/by-ref/{CLAIM_KEY}.json` performed **before any write**: `404` on a new reference, `200` when the reference already exists. `0` means the call never completed. |
+| `ref_collision` | **added 260814-80f.** `true` when the reference already exists **under a different policy** — the write is REFUSED and neither PUT is issued. |
 | `duplicate_replaced` | `true` when an existing record with the same `claim_ref` was replaced |
 | `claims_on_policy_after` | claim count on the policy after the write; forced to `0` when `recorded` is false |
 | `created_at` | the timestamp the tool generated |
-| `error` / `error_stage` | populated on failure; `error_stage` is one of `bootstrap`, `validate`, `read`, `by_policy`, `by_ref`, `write` |
+| `error` / `error_stage` | populated on failure; `error_stage` is one of `bootstrap`, `validate`, **`precheck`**, **`collision`**, `read`, `by_policy`, `by_ref`, `write` |
+
+### The claim-reference key scheme — CHANGED 2026-08-14 (quick task `260814-80f`)
+
+`resolve_claim` mints the reference on both apps. Until 2026-08-14 it computed
+`CLM-{24000 + (int(time.time()) % 900) + seq}` — **a deterministic 900-second wheel, not a random
+draw.** The reference space was 900 values wide and repeated every fifteen minutes, and it duly
+issued `CLM-24599` twice, to a MacBook claim on `PDP-100294` and a Dell claim on `PDP-100017`
+resolved 22 h 15 min apart. The second write **silently clobbered** the first's `by-ref` object,
+because `duplicate_replaced` cannot distinguish a genuine re-write of the same claim from a
+collision between two different ones.
+
+**The scheme is now `CLM-{24000000 + (int(time.time()) % 10000000) + seq}`.**
+
+| | before | after |
+|---|---|---|
+| space | 900 | **10,000,000** |
+| repeat period | 15 minutes | **115.7 days** |
+| format | `CLM-24599`, 5 digits | `CLM-30705868`, **always 8 digits** |
+| range | 24001–24900 | 24,000,001–34,000,000 |
+
+`seq` is still the per-session `claim_seq` counter. Object keys are unaffected: `_norm_key` strips
+non-alphanumerics and the key is still `claims/by-ref/CLM30705868.json`. `lookup_claim`'s
+spoken-reference normalisation is length-agnostic and was **not changed**.
+
+**The store holds two reference generations side by side.** `CLM-24xxx` records written before
+2026-08-14 were deliberately left alone — `CLM-24690` on `PDP-100294` and `CLM-24599` on
+`PDP-100017` are live demo data. The one genuinely colliding record, the MacBook claim on
+`PDP-100294`, was re-issued as **`CLM-30623899`** and carries `superseded_ref: "CLM-24599"` and a
+`repair_note` so the history is visible in the object rather than only in this document.
+
+### `record_claim` refuses a cross-policy overwrite (260814-80f)
+
+Before touching anything, `record_claim` performs one `GET` of `claims/by-ref/{CLAIM_KEY}.json`:
+
+| observed | behaviour |
+|---|---|
+| `404` | new reference — proceed |
+| `200`, **same** policy | a legitimate re-write — falls through to `duplicate_replaced` |
+| `200`, **different** policy | **REFUSE**: `recorded: false`, `ref_collision: true`, `status_code: 409`, `error_stage: "collision"`, `store_calls: 1`, **neither PUT issued** |
+| anything else | abort, `error_stage: "precheck"` — never write blind |
+
+Proven by invocation on both apps (17/17 each), including against the real key:
+`claim_ref CLM24599 already belongs to policy PDP100017 - refusing to overwrite it`.
+
+**A caller must not assert `store_calls == 3`.** It is `4` on a full write.
 
 **How a failed write is reported — the point of this whole design.** `resolve_claim` on both apps
 sets `email_delivery="live"` and `email_status="queued"` *before* its request and returns
@@ -332,6 +379,21 @@ programmatically, and the result is compared by hash after normalising that subs
 | `record_claim` | voice `6e01e4a5` | 11,711 | `7c55cf0a7ccb11f0…` |
 | `lookup_claim` | chat `a2f621e4` | 13,372 | `9beafa4711231318…` |
 | `lookup_claim` | voice `6e01e4a5` | 13,372 | `9beafa4711231318…` |
+
+**SUPERSEDED for `record_claim` by 260814-80f.** The cross-policy pre-check added +1,718 chars to
+both copies. Current measured values, read back from the API after the patch and re-asserted in the
+121-assertion gate:
+
+| Tool | App | Source length | SHA-256 (whole `pythonCode`) |
+|---|---|---|---|
+| `record_claim` | chat `a2f621e4` | **13,428** | `f2249b8c59a97972…` |
+| `record_claim` | voice `6e01e4a5` | **13,429** | `06e28dd4b191e388…` |
+| `lookup_claim` | both | 13,372 | `9beafa4711231318…` — **unchanged, still raw-identical** |
+
+Normalised parity still holds: the single `channel: str = "CHAT"` / `"VOICE"` line remains the only
+difference between the two `record_claim` copies. `resolve_claim` is now
+chat 15,659 / voice 10,133 (was 15,648 / 10,122) and carries
+`int(time.time()) % 10000000` and `CLM-{24000000 + offset + seq}` exactly once on each app.
 
 | Tool | Normalised SHA-256 (chat) | Normalised SHA-256 (voice) | Equivalent |
 |---|---|---|---|
