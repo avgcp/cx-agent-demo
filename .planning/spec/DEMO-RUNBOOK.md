@@ -290,8 +290,8 @@ but the customer can show you the damage, which the phone run cannot do.
 | | |
 |---|---|
 | App | `a2f621e4-9faf-505a-b804-22471f022366` — *Meridian Claim - Chat (hardened)* |
-| Version live | `d0e4bfef-6d5f-43b3-b490-3d9036d030e2` — **chat v18, *the widget's first message ACTUALLY greets you now*** (2026-08-13, quick task `260813-ui0`). v17 rewrote the instruction but a callback still hard-returned the identity demand as the widget's opening message **and the agent then asked a second time** — so v17's opener was never seen by a user. Supersedes v17 `64be15eb` (the instruction change), v16 `be4c83bb` (photo on every claim + `[RECORD] [CHAT]` record email), v15 `129f8b31` (claim store + status lookup), v14 `cdca14e3` (photo attached to the packet), v13 `1eb3fd5c`, v12 `26c3aebd`, v10 `658472a0`, v9 `160dc3b2`, v8 `3f85b1d8`, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v18** |
-| Roll back to | `64be15eb-947f-4f36-8af2-2aefd225742b` — chat v17. **Loses only the opening message** — the widget goes back to demanding your full name and policy ID as its first words, and then asking again. Every other beat is byte-identical (same instruction, same 13 tools, same config). See *If something goes wrong (chat)* below. |
+| Version live | **`8a95ab02-e653-4d1e-baee-eb500c52710c` — chat v20, *confirming a claim read-back works, and the `[RECORD]` email actually sends*** (2026-08-14, quick task `260814-8rv`). Two fixes: answering *"yes"* / *"that's the one"* / *"correct"* to the status read-back used to return **"there is nothing for me to read back"**; and on the auto-approve path the cross-sell widget was ending the turn before `send_case_record_email` ran, so **no `[RECORD]` email was ever sent**. Both fixed; both tools now fire in the same turn, mailer first. Supersedes v19 `619e13a1` (non-colliding 8-digit claim references + cross-policy overwrite refusal, `260814-80f`), v18 `d0e4bfef` (**the widget's first message actually greets you** — `260813-ui0`). v17 rewrote the instruction but a callback still hard-returned the identity demand as the widget's opening message **and the agent then asked a second time** — so v17's opener was never seen by a user. Supersedes v17 `64be15eb` (the instruction change), v16 `be4c83bb` (photo on every claim + `[RECORD] [CHAT]` record email), v15 `129f8b31` (claim store + status lookup), v14 `cdca14e3` (photo attached to the packet), v13 `1eb3fd5c`, v12 `26c3aebd`, v10 `658472a0`, v9 `160dc3b2`, v8 `3f85b1d8`, and v7 `bb14cdcc`, which is still the version the on-screen card was verified against — **the card definition is byte-identical in v7 through v18** |
+| Roll back to | **`619e13a1-2a31-4627-aca3-2ff3a32e336b` — chat v19.** **Loses two things and you must know which**: (a) confirming a claim read-back breaks again — answering *"yes"* returns *"there is nothing for me to read back"*, so **do not run the claim-status beat on v19**; and (b) the `[RECORD]` email stops being sent on the auto-approve path. Everything else is byte-identical (same 13 tools, same config, same opening line, same card, same cross-sell). The older v17 `64be15eb` rollback is retained for history only — do not roll back that far. See *If something goes wrong (chat)* below. |
 | Deployment | `d7bfbb93-8cee-43fe-9095-bc5775f353bd` — *chat - meridian demo*, `WEB_UI` / chat only |
 | Widget embed | The console-generated embed snippet from **Deployments → *chat - meridian demo* → the embed/integration panel**, served from a local page with a token broker at `http://localhost:3000`, on chat-messenger SDK **v1.16**, with `enable-file-upload` set on the `chat-messenger-container` element. No Cloud Storage bucket or `url-allowlist` configuration is needed — file upload worked with none, and the card's placeholder image is a `gstatic.com` URL the SDK hard-trusts. |
 
@@ -432,6 +432,31 @@ cover?"* — followed by **two buttons in a row: `Add it` and `Not now`**.
 - The conversation ends **after** the customer answers, not before — so the buttons stay
   live long enough to tap.
 
+## Scenario C2 — "where's my claim got to?" in the CHAT WIDGET
+
+**New in chat v20 `8a95ab02` (2026-08-14).** The claim-status beat now works in chat as well as on
+the phone, and — this is the part that changed — **confirming the read-back works.** On v15 through
+v19 the widget read one claim back, asked *"Is that the one you mean?"*, and then answered *"yes"*
+with **"I can't match that to a claim on this policy, so there is nothing for me to read back."**
+That is fixed. Do not run this beat on any build older than v20.
+
+| You type | Agent should |
+|---|---|
+| *"Hi, this is Jordan Rivera, policy PDP100294. Any update on my claim?"* | Verify you, then read **one** claim back and ask whether that is the one |
+| *"yes"* — or *"that's the one"*, or *"correct"* | Read the full status: reference, device, amount, excess, what comes to you, when it was filed, and which channel it came from |
+| *"no, the older one"* (the alternative branch) | Move to a **different** claim and read that one back instead — it never reads you a list |
+| *"Could you also check CLM-99999999?"* | *"I can't find a claim with that reference on this policy"* — and **quote no figure at all** |
+
+**Any plain agreement works** — the agent resolves the confirmation using the reference *it* just
+gave you, so you are never asked to type a claim number back. Same design as the phone; the two
+channels behave identically here.
+
+> **Same caveat as the phone beat:** `PDP100294` holds 25 test claims, so the widget opens with
+> *"I can see 25 claims on this policy."* Prune the store first, or run it on
+> **Alex Chen / PDP100017**, which holds exactly one (`CLM-24599`, Dell XPS 14, $560) and therefore
+> resolves in a single turn with no confirmation step at all — so rehearse whichever one you intend
+> to show.
+
 ## Scenario D — the photo disagrees  *(the strongest beat)*
 
 > ⚠ **Unverified live.** This scenario is proven **offline only** (`phototest2.py`) and has
@@ -472,7 +497,7 @@ without opening it:
 | | Subject | Who it is for |
 |---|---|---|
 | Customer confirmation | `Claim CLM-24xxx - please reply with photos`, or — when the customer already uploaded one — `Claim CLM-24xxx - photo received, nothing needed` | the customer |
-| **Record, auto-approved claim** | **`[RECORD] [CHAT] CLM-24xxx - Jordan Rivera - APPROVED`** | the file. **New in v16** — before this, an approved claim left no record and no photo |
+| **Record, auto-approved claim** | **`[RECORD] [CHAT] CLM-3xxxxxxx - Jordan Rivera - APPROVED`** | the file. **New in v16** — before this, an approved claim left no record and no photo. **⚠ It was silently NOT being sent between v16 and v19** — the cross-sell widget was ending the turn before the mailer could run. **Fixed in chat v20 `8a95ab02` (2026-08-14, quick task `260814-8rv`)**; do not trust a `[RECORD]` email from a build older than v20 |
 | **Briefing packet, escalated claim** | **`[ASSESSOR] [CHAT] CLM-24xxx - Jordan Rivera`** | the specialist picking the case up |
 
 `[ASSESSOR]` still means *a person must act on this*, which is why its subject is unchanged from
@@ -758,18 +783,20 @@ what the phone number serves — you must cut a new version and repoint the depl
 
 ## If something goes wrong  *(chat)*
 
-**Roll back the chat deployment to v17 `64be15eb`** — the version live before v18. You lose
-**only the opening message**: the widget goes back to demanding your full name and policy ID as
-its first words, and then asking a second time. The photo-on-every-claim ask, the
-`[RECORD] [CHAT]` record email, the claim store, the status lookup, the decision card and the
-cross-sell are all **byte-identical** between v17 and v18 — v18 changes 46 bytes inside one
-callback and nothing else. One call:
+**Roll back the chat deployment to v19 `619e13a1`** — the version live before v20. You lose
+**exactly two things, and both matter**: (a) **the claim-status confirm path breaks** — answering
+*"yes"* to *"Is that the one you mean?"* returns *"there is nothing for me to read back"*, so
+**Scenario C2 must not be run on v19**; and (b) **the `[RECORD] [CHAT]` email stops being sent** on
+the auto-approve path, because the cross-sell widget ends the turn before the mailer runs. The
+opening greeting, the photo ask, the claim store, the status lookup itself, the decision card, the
+tariff, the customer email, the assessor packet and the cross-sell are all **byte-identical** between
+v19 and v20 — v20 changes two instructions and nothing else, and touches no tool. One call:
 
 ```bash
 curl -X PATCH \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "Content-Type: application/json" \
-  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/64be15eb-947f-4f36-8af2-2aefd225742b"}' \
+  -d '{"appVersion":"projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/versions/619e13a1-2a31-4627-aca3-2ff3a32e336b"}' \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/a2f621e4-9faf-505a-b804-22471f022366/deployments/d7bfbb93-8cee-43fe-9095-bc5775f353bd?updateMask=appVersion"
 ```
 
