@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | `dcc20863-3746-4e43-a2c9-ed30e0611479` — **voice v17, *the call ACTUALLY opens with the greeting now*** (2026-08-13, quick task `260813-ui0`). v16 rewrote the instruction but a `beforeModelCallback` hard-returned the old identity demand on the phone, so **v16's opener was never heard on a real call**. Supersedes v16 `09a1f14d` (the instruction change), v15 `17b2e438` (language follows the caller across the agent handoff), v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet on the phone), v11 `b17c9a26` (no self-narration). |
-| Roll back to | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` — voice v16. **Loses only the opening line** — the call goes back to demanding your full name and policy ID as its first words. Every other beat is byte-identical (same instruction, same nine tools, same config). See *If something goes wrong (phone)* below. |
+| Version live | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` — **voice v18, *the phone can now READ A CLAIM BACK* (2026-08-14, plan `06-04`). A caller who says who they are and asks about a claim they already filed hears its real status, read from the shared claim store — including claims filed in the CHAT widget. Supersedes v17 `dcc20863` (the call actually opens with the greeting), v16 `09a1f14d`, v15 `17b2e438`, v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet on the phone), v11 `b17c9a26` (no self-narration).** |
+| Roll back to | `dcc20863-3746-4e43-a2c9-ed30e0611479` — voice v17. **Loses only the claim-status beat** — the phone goes back to being able to take a new claim but not to read an existing one back. Every other beat is byte-identical (same `claim_intake`, same nine tools, same config, same opening line). See *If something goes wrong (phone)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -40,7 +40,7 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `dcc20863…`. Anything else and the email may go elsewhere — see the version table
+> Expect `a6f6b620…`. Anything else and the email may go elsewhere — see the version table
 > at the bottom.
 >
 > **Faster and better: just listen to the first sentence.** The opening line is now a
@@ -154,9 +154,20 @@ each one — don't talk over the pause.
 | *"Hi there"* | Greet you and ask how it can help |
 | *"I need to file a claim"* | Ask for your full name and policy ID |
 | *"Jordan Rivera, policy PDP100294"* | Verify and put you through |
-| *"I spilled a full glass of water on my MacBook and now it won't turn on at all"* | Call it a total loss and route to a human |
+| *"I dropped my laptop down a flight of stairs"* | Ask which part is damaged |
+| *"The screen is completely smashed and it will not turn on at all now"* | Ask about liquid |
+| *"No liquid at all, just the drop"* | Ask whether it still works |
+| *"No, it is not working at all"* | Call it a total loss ($3,000) and route to a human |
 | *"Okay"* | **Speak the send-away line**, then file the case and close |
 
+> ### ⛔ ON THE PHONE, DO NOT OPEN THE ESCALATION WITH A SPILL
+> *"I spilled coffee into my laptop"* **stalls the diagnostic on the voice channel.** The model
+> passes the diagnostic tool its answers wrapped in quote marks, the tool correctly refuses them,
+> and the agent re-asks the same question indefinitely — five turns and no decision. Verified
+> **pre-existing** against the previous build through the live deployment (plan `06-04`), not a
+> regression, and not fixed. **Use the drop script above on the phone.** The spill is still fine
+> on chat.
+>
 > ### ⚠ On the escalation run, do NOT open by volunteering everything at once
 > *"Hi, I'm Jordan Rivera, policy PDP100294, I spilled water on my MacBook"* in one breath works
 > — you are verified immediately and not asked to repeat yourself — **but it collapses the rest
@@ -222,6 +233,36 @@ and a structured case file already exists.
 > Either one goes wrong → roll back to v11 `b17c9a26`, one call, below.
 
 ---
+
+## Scenario B2 — "where's my claim got to?" on the PHONE  *(the cross-channel beat)*
+
+**New in voice v18 `a6f6b620` (2026-08-14).** The phone can now read an **existing** claim back —
+including one filed in the **chat widget**. This is the beat that shows the two channels are one
+system rather than two demos.
+
+| You say | Agent should |
+|---|---|
+| *"Hi, this is Jordan Rivera, policy PDP100294, and I'm just checking on a claim I put in."* | Verify you, then read **one** claim back and ask whether that is the one |
+| *"Yes, that's the one."* | Read the full status: reference, device, amount, excess, what comes to you, when it was filed, **and which channel it came from** |
+| *"Could you also check CLM-60203 for me?"* | *"I can't find a claim with that reference on this policy"* — and **quote no figure at all** |
+
+**The line to point at:** *"…Filed on 14 August 2026 **via chat**."* You are on the phone, hearing a
+claim that was filed in the chat window. Every figure in that sentence is composed in Python from the
+stored record and relayed word for word — **the model contributes none of the numbers.**
+
+> ### 👂 Two things to know before you run this live
+>
+> 1. **`PDP100294` currently holds 25 test claims**, so the agent will say *"I can see 25 claims on
+>    this policy."* That is correct and it is a bad line in front of a customer. Either prune the
+>    store first, or run this beat on **Maria Santos / PDP100583**, which has exactly one claim (but
+>    was filed on the phone, so you lose the cross-channel punch).
+> 2. **You are never asked to read a claim number out.** That is deliberate and it is worth saying
+>    out loud in the room: speech-to-text mangles `CLM-24690`, so the agent identifies you by name
+>    and policy and finds the claim itself. If it ever *does* ask you to read a reference aloud,
+>    that is a defect — stop and report it.
+
+**The pause before the answer is about three seconds.** It is the shortest tool-backed turn in the
+whole demo. Talk over it if you want to — barge-in works.
 
 ## Optional beat — "actually it's my phone"
 
@@ -667,12 +708,12 @@ curl -X PATCH \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments/d28bbcb0-066e-4127-a894-fbf9ba39789f?updateMask=appVersion"
 ```
 
-**The named rollback is now voice v16 `09a1f14d-be24-40ba-abbd-a06e495f5d0d`** — the build the
-phone served immediately before the 2026-08-14 03:15 UTC repoint. Rolling back costs **only the
-opening line**: the call goes back to demanding your full name and policy ID as its first words.
-The decision line, the tariff, the customer email, the cross-sell, the assessor packet, the
-Spanish support, the language-follows-the-caller fix at the handoff and barge-in are all
-**byte-identical** between v16 and v17 — v17 changes 46 bytes inside one callback and nothing
+**The named rollback is now voice v17 `dcc20863-3746-4e43-a2c9-ed30e0611479`** — the build the
+phone served immediately before the 2026-08-14 03:50 UTC repoint. Rolling back costs **only the
+claim-status beat**: the phone can still take a new claim, it just can no longer read an existing
+one back. The opening line, the decision line, the tariff, the customer email, the cross-sell, the
+assessor packet, Spanish, the handoff language fix and barge-in are all **byte-identical** between
+v17 and v18 — v18 adds one subtask to `claims_concierge` and attaches one tool, and touches nothing
 else. Substitute it for `<VERSION_ID>` above.
 
 *(The older v11 `b17c9a26` rollback below is retained for history only. Do not roll back that far
@@ -680,8 +721,9 @@ unless the packet itself is the problem — you would also lose Spanish and the 
 
 | Version | ID | Notes |
 |---|---|---|
-| **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Current.** The call ACTUALLY opens with the greeting. v16 changed the instruction but a `beforeModelCallback` hard-returned the old identity demand on the real phone leg, so v16's opener was never heard on a call. 93/93 canaries green |
-| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Roll back to this.** The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
+| **v18** | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` | **Current.** The phone can read an existing claim back. `lookup_claim` attached to `claims_concierge` behind `verify_identity`; the caller is never asked to say a claim reference out loud; several claims are disambiguated by reading the most recent one back; the status sentence is composed in Python and relayed word for word. 47/47 canaries green |
+| **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Roll back to this.** The call actually opens with the greeting. Everything except the claim-status beat is byte-identical to v18 |
+| v16 | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | Superseded. The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
 | v15 | `17b2e438-b132-49f1-8b32-190b132225ae` | Superseded. Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
 | v14 | `5d02f14c-8cba-4bf4-aa3a-b9caf57ffddc` | The phone agent speaks Spanish, following the caller from the first word. Conversational layer fully bilingual; the deterministic strings are still English |
 | v13 | `5d9df25c-3771-45bb-bd20-b28978cc5955` | Superseded. Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
@@ -744,8 +786,9 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Current.** The call ACTUALLY opens with the greeting. v16 changed the instruction but a `beforeModelCallback` hard-returned the old identity demand on the real phone leg, so v16's opener was never heard on a call. 93/93 canaries green |
-| **v16** | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | **Roll back to this.** The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
+| **v18** | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` | **Current.** The phone can read an existing claim back. `lookup_claim` attached to `claims_concierge` behind `verify_identity`; the caller is never asked to say a claim reference out loud; several claims are disambiguated by reading the most recent one back; the status sentence is composed in Python and relayed word for word. 47/47 canaries green |
+| **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Roll back to this.** The call actually opens with the greeting. Everything except the claim-status beat is byte-identical to v18 |
+| v16 | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | Superseded. The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
 | v15 | `17b2e438-b132-49f1-8b32-190b132225ae` | Superseded. Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
 | v14 | `5d02f14c-8cba-4bf4-aa3a-b9caf57ffddc` | The phone agent speaks Spanish, following the caller from the first word. Conversational layer fully bilingual; the deterministic strings are still English |
 | v13 | `5d9df25c-3771-45bb-bd20-b28978cc5955` | Superseded. Assessor briefing packet on the escalation path, filed on the email-confirmation turn; `[ASSESSOR] [VOICE]` subject; money as whole dollars; also carries the `DIAGNOSTIC_INCOMPLETE` recovery fix |
