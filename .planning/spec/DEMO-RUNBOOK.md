@@ -27,8 +27,8 @@ appendix and this runbook matches what actually happens on the line.
 |---|---|
 | Project | `insurance-agent-demo-500614` (location `us`) |
 | App | `6e01e4a5-42a8-5213-b3da-c9053ff8ea52` — *Meridian Claim - Voice (demo-ready)* |
-| Version live | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` — **voice v18, *the phone can now READ A CLAIM BACK* (2026-08-14, plan `06-04`). A caller who says who they are and asks about a claim they already filed hears its real status, read from the shared claim store — including claims filed in the CHAT widget. Supersedes v17 `dcc20863` (the call actually opens with the greeting), v16 `09a1f14d`, v15 `17b2e438`, v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet on the phone), v11 `b17c9a26` (no self-narration).** |
-| Roll back to | `dcc20863-3746-4e43-a2c9-ed30e0611479` — voice v17. **Loses only the claim-status beat** — the phone goes back to being able to take a new claim but not to read an existing one back. Every other beat is byte-identical (same `claim_intake`, same nine tools, same config, same opening line). See *If something goes wrong (phone)* below. |
+| Version live | **`d8fe1e86-0af6-4eed-adb4-1588d08cb27f` — voice v20, *the phone can no longer invent a claim*** (2026-08-17, quick task `260817-taq`). **On v19 and v18 the agent sometimes answered a claim-status question WITHOUT EVER CALLING `lookup_claim`, and made the answer up** — an invented reference (`CLM92837`), an invented despatch, an invented payment, and once an invented *"I can't find any claims for this policy"* on a policy holding 27. It happened on **3 of the 4 status calls ever made to the phone**. Cause: the instruction told the agent to speak a *"let me look that up"* line **before** calling the tool, and on a live call the model finished the sentence with an answer it did not have. The line is gone, the tool now runs first, and a callback refuses any claim fact stated without a `lookup_claim` response. Supersedes v19 `e484ce3e` (8-digit non-colliding references), v18 `a6f6b620` (the phone can read a claim back, plan `06-04`), v17 `dcc20863` (the call opens with a greeting), v16 `09a1f14d`, v15 `17b2e438`, v14 `5d02f14c` (Spanish), v13 `5d9df25c` (assessor packet), v11 `b17c9a26` (no self-narration). |
+| Roll back to | **`e484ce3e-00d6-4fae-b180-d789645f7280` — voice v19.** ⚠ **Rolling back REINTRODUCES THE FABRICATION.** On v19 the phone may state a claim reference, an approval, a despatch date or a flat "no claims on file" that it invented — observed three times. **Do not run the claim-status beat on v19 or any earlier build.** Everything else is byte-identical between v19 and v20 (same `claim_intake`, same nine tools, same config, same opening line) — v20 changes one instruction and one callback on `claims_concierge` and touches no tool. See *If something goes wrong (phone)* below. |
 | Deployment | `d28bbcb0-066e-4127-a894-fbf9ba39789f` — *voice - meridian demo* |
 | Claim email goes to | `akash.vinayak@nerdery.com` |
 | Assessor packet goes to | `akash.vinayak@nerdery.com` — **same mailbox**, told apart by the `[ASSESSOR] [VOICE]` subject |
@@ -40,8 +40,9 @@ appendix and this runbook matches what actually happens on the line.
 >   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments" \
 >   | grep -o 'versions/[a-f0-9-]*'
 > ```
-> Expect `a6f6b620…`. Anything else and the email may go elsewhere — see the version table
-> at the bottom.
+> Expect `d8fe1e86…`. Anything else and the email may go elsewhere — see the version table
+> at the bottom. **If it reads `e484ce3e…` or `a6f6b620…`, do not run the claim-status beat at
+> all: those builds can invent a claim reference and a status out of nothing.**
 >
 > **Faster and better: just listen to the first sentence.** The opening line is now a
 > deterministic literal, so it is a one-second version check by ear. If the call opens
@@ -733,20 +734,28 @@ curl -X PATCH \
   "https://ces.googleapis.com/v1/projects/insurance-agent-demo-500614/locations/us/apps/6e01e4a5-42a8-5213-b3da-c9053ff8ea52/deployments/d28bbcb0-066e-4127-a894-fbf9ba39789f?updateMask=appVersion"
 ```
 
-**The named rollback is now voice v17 `dcc20863-3746-4e43-a2c9-ed30e0611479`** — the build the
-phone served immediately before the 2026-08-14 03:50 UTC repoint. Rolling back costs **only the
-claim-status beat**: the phone can still take a new claim, it just can no longer read an existing
-one back. The opening line, the decision line, the tariff, the customer email, the cross-sell, the
-assessor packet, Spanish, the handoff language fix and barge-in are all **byte-identical** between
-v17 and v18 — v18 adds one subtask to `claims_concierge` and attaches one tool, and touches nothing
-else. Substitute it for `<VERSION_ID>` above.
+**The named rollback is now voice v19 `e484ce3e-00d6-4fae-b180-d789645f7280`** — the build the
+phone served immediately before the 2026-08-18 02:47 UTC repoint.
+
+> ⚠ **Rolling the phone back reintroduces a fabricating agent.** On v19 the claim-status branch
+> can answer without ever calling `lookup_claim` and invent the reference, the decision and the
+> date — it did so on three separate live calls (`0810JFoa…`, `103NCt8c…`, `065rK0K0…`). If you
+> must roll back for some other reason, **cut the claim-status beat from the script entirely** and
+> present the phone as new-claims-only. Everything else — the opening line, the decision line, the
+> tariff, the customer email, the cross-sell, the assessor packet, Spanish, the handoff language
+> fix and barge-in — is **byte-identical** between v19 and v20; v20 replaces one paragraph of
+> `claims_concierge`'s instruction and extends its `afterModelCallbacks`, and touches no tool.
+
+Substitute it for `<VERSION_ID>` above.
 
 *(The older v11 `b17c9a26` rollback below is retained for history only. Do not roll back that far
 unless the packet itself is the problem — you would also lose Spanish and the handoff language fix.)*
 
 | Version | ID | Notes |
 |---|---|---|
-| **v18** | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` | **Current.** The phone can read an existing claim back. `lookup_claim` attached to `claims_concierge` behind `verify_identity`; the caller is never asked to say a claim reference out loud; several claims are disambiguated by reading the most recent one back; the status sentence is composed in Python and relayed word for word. 47/47 canaries green |
+| **v20** | `d8fe1e86-0af6-4eed-adb4-1588d08cb27f` | **Current (2026-08-17, `260817-taq`).** The phone can no longer invent a claim. `lookup_claim` now runs **before** anything is said about a claim — the *"let me look that up"* line that used to precede it is gone, because on a live call the model kept talking and made the answer up. An `afterModelCallback` refuses any claim reference, amount, decision or date stated without a `lookup_claim` response in the conversation. 130/130 draft canaries, 14/14 on the deployment, 22/22 on the guard itself |
+| **v19** | `e484ce3e-00d6-4fae-b180-d789645f7280` | ⚠ **FABRICATES.** Claim references are 8 digits and no longer collide (`260814-80f`), but the status branch answered 3 of 4 live calls **without calling the tool** and invented the reference, the status and the date. Do not run the status beat on this build |
+| **v18** | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` | ⚠ **FABRICATES — same defect.** The phone can read an existing claim back (`06-04`): `lookup_claim` attached to `claims_concierge` behind `verify_identity`; the caller is never asked to say a claim reference out loud; the status sentence is composed in Python and relayed word for word. 47/47 canaries green — but all of them were taken on the TEXT/API channel, and the defect only appears on live audio |
 | **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Roll back to this.** The call actually opens with the greeting. Everything except the claim-status beat is byte-identical to v18 |
 | v16 | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | Superseded. The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
 | v15 | `17b2e438-b132-49f1-8b32-190b132225ae` | Superseded. Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
@@ -813,7 +822,9 @@ Then **reload `http://localhost:3000`** so the widget picks the version up.
 
 | Version | ID | Notes |
 |---|---|---|
-| **v18** | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` | **Current.** The phone can read an existing claim back. `lookup_claim` attached to `claims_concierge` behind `verify_identity`; the caller is never asked to say a claim reference out loud; several claims are disambiguated by reading the most recent one back; the status sentence is composed in Python and relayed word for word. 47/47 canaries green |
+| **v20** | `d8fe1e86-0af6-4eed-adb4-1588d08cb27f` | **Current (2026-08-17, `260817-taq`).** The phone can no longer invent a claim. `lookup_claim` now runs **before** anything is said about a claim — the *"let me look that up"* line that used to precede it is gone, because on a live call the model kept talking and made the answer up. An `afterModelCallback` refuses any claim reference, amount, decision or date stated without a `lookup_claim` response in the conversation. 130/130 draft canaries, 14/14 on the deployment, 22/22 on the guard itself |
+| **v19** | `e484ce3e-00d6-4fae-b180-d789645f7280` | ⚠ **FABRICATES.** Claim references are 8 digits and no longer collide (`260814-80f`), but the status branch answered 3 of 4 live calls **without calling the tool** and invented the reference, the status and the date. Do not run the status beat on this build |
+| **v18** | `a6f6b620-af15-4e43-b0d8-bfbbb2d64a46` | ⚠ **FABRICATES — same defect.** The phone can read an existing claim back (`06-04`): `lookup_claim` attached to `claims_concierge` behind `verify_identity`; the caller is never asked to say a claim reference out loud; the status sentence is composed in Python and relayed word for word. 47/47 canaries green — but all of them were taken on the TEXT/API channel, and the defect only appears on live audio |
 | **v17** | `dcc20863-3746-4e43-a2c9-ed30e0611479` | **Roll back to this.** The call actually opens with the greeting. Everything except the claim-status beat is byte-identical to v18 |
 | v16 | `09a1f14d-be24-40ba-abbd-a06e495f5d0d` | Superseded. The instruction that greets and asks *"how can I help you today?"* — but on a real call it still opened by demanding name and policy ID. Everything except the opening line is byte-identical to v17 |
 | v15 | `17b2e438-b132-49f1-8b32-190b132225ae` | Superseded. Language follows the caller across the `claims_concierge` to `claim_intake` handoff — the defect that ended a live call with a hang-up |
